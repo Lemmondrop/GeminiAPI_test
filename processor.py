@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 api_key = (os.getenv("GEMINI_API_KEY") or "").strip()
 
-TARGET_MODEL = "models/gemini-2.0-flash"
+TARGET_MODEL = "models/gemini-2.5-flash"
 API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 HEADERS = {"Content-Type": "application/json"}
 
