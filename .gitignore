@@ -1,0 +1,13 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Environment
+.env
+
+# Data & Outputs
+data/
+output/
+output_report/
+report\(sample\)/
