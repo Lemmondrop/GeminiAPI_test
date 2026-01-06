@@ -11,3 +11,6 @@ data/
 output/
 output_report/
 report\(sample\)/
+
+# Debug / temporary files
+debug_*.json
