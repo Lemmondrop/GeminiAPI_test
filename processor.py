@@ -223,27 +223,42 @@ JSON_SCHEMA = r"""
     "Technical_Details": ["원리", "특허/인증 등"],
     "Moat_Analysis": ["진입장벽", "Lock-in요소"]
   },
+
   "Market_Opportunity": {
-    "TAM_SAM_SOM_Text": "시장규모 요약",
-    "Market_Chart_Data": [
-      ["구분", "시장규모(단위 포함)"],
-      ["TAM", 0],
-      ["SAM", 0],
-      ["SOM", 0]
-    ]
+    "Market_Definition": {
+      "TAM": "TAM 정의(무엇을 포함하는 전체 시장인지)",
+      "SAM": "SAM 정의(현실적으로 접근 가능한 세그먼트)",
+      "SOM": "SOM 정의(3~5년 내 점유 가능한 실질 시장)"
+    },
+    "TAM_SAM_SOM_Value": {
+      "TAM": { "value": 0, "unit": "단위(예: B USD)", "year": 2024 },
+      "SAM": { "value": 0, "unit": "단위(예: B USD)", "year": 2025 },
+      "SOM": { "value": 0, "unit": "단위(예: B USD)", "year": 2030 }
+    },
+    "Market_Sources": [
+      {
+        "Claim": "핵심 주장(시장규모/성장률/정의)",
+        "Source": "기관/매체/리포트명",
+        "Year": "YYYY",
+        "Evidence": "근거 요약(한 문장)",
+        "URL_or_Identifier": "URL 또는 식별자(가능하면)"
+      }
+    ],
+    "TAM_SAM_SOM_Text": "시장규모 요약(정의+수치+근거를 4~6문장으로 정리)"
   },
+
   "Business_Financial_Status": {
     "Revenue_Model": "수익모델",
     "Current_Status": "사업단계",
     "Financial_Highlights": ["매출/투자 수치", "목표치"]
   },
   "Table_Data_Preview": {
-      "Major_Milestones": [["시기", "내용"]],
-      "Financial_Table": [
-          ["항목", "연도1", "연도2"],
-          ["매출액", "값1", "값2"],
-          ["영업이익", "값1", "값2"]
-      ]
+    "Major_Milestones": [["시기", "내용"]],
+    "Financial_Table": [
+      ["항목", "연도1", "연도2"],
+      ["매출액", "값1", "값2"],
+      ["영업이익", "값1", "값2"]
+    ]
   },
   "Key_Risks_and_Mitigation": [
     { "Risk_Factor": "리스크", "Mitigation_Strategy": "대응책" }
@@ -253,13 +268,337 @@ JSON_SCHEMA = r"""
 }
 """.strip()
 
+def market_rag_prompt(base_obj: dict) -> str:
+    """
+    Market 전용 RAG 프롬프트
+    - google_search를 사용해서 시장 정의 + TAM/SAM/SOM 값 + 연도별 시계열(가능하면 5개 연도) + 근거(Sources)를 JSON으로만 출력
+    """
+    header = (base_obj.get("Report_Header") or {})
+    company = header.get("Company_Name", "N/A")
+    sector = header.get("Industry_Sector", "N/A")
+
+    # base에서 이미 뽑힌 시장 힌트가 있으면 같이 제공
+    mo = base_obj.get("Market_Opportunity") or {}
+    existing_def = mo.get("Market_Definition") or {}
+    existing_text = mo.get("TAM_SAM_SOM_Text") or ""
+
+    # 프롬프트에 너무 길게 넣지 않도록 clip
+    def clip(s, n=1200):
+        s = (s or "").strip()
+        return s[:n]
+
+    return f"""
+오직 JSON만 출력(설명/마크다운/코드펜스/주석 금지).
+JSON은 반드시 {{ 로 시작하고 }} 로 끝나야 함.
+추정 금지: 검색으로 확인 불가하면 "N/A" 또는 0.
+
+# Role
+당신은 15년 경력의 VC 수석 심사역이며, 시장 파트(VC 제출용)를 보강합니다.
+
+# Context (이미 추출된 정보)
+- 기업명: {company}
+- 산업/섹터: {sector}
+- 기존 Market_Definition 힌트: {json.dumps(existing_def, ensure_ascii=False)}
+- 기존 TAM/SAM/SOM 텍스트 힌트: {clip(existing_text, 1200)}
+
+# Task
+google_search로 아래 항목을 '근거 기반'으로 채워 Market_Opportunity JSON만 생성하세요.
+
+## 반드시 포함할 필드(스키마 고정)
+1) Market_Definition:
+   - TAM / SAM / SOM을 "정의 문장(한 문장)"으로 명확히 작성
+2) TAM_SAM_SOM_Value:
+   - TAM/SAM/SOM 각각 {{"value": 숫자, "unit": "B USD/조원/억원 등", "year": YYYY}} 형태로
+   - 단위는 통일(가능하면 동일 단위)
+3) Market_Chart_Data:
+   - 반드시 아래 형태로 생성 (강제)
+     [
+       ["연도","TAM","SAM","SOM"],
+       ["2023", 100, 80, 50],
+       ...
+     ]
+   - 원칙:
+     - 검색에서 "시장 전망(연도별)" 표/수치를 찾으면 그대로 반영
+     - 시계열이 없으면: 최소 1개 연도 row는 채우되(대표 year), 나머지는 0 또는 "N/A"로 두기
+     - 절대 임의 보간/추정으로 연도를 늘리지 말 것
+4) Market_Sources:
+   - claim(주장) 단위로 최소 3개 이상
+   - 각 항목: Claim / Source / Year / Evidence / URL_or_Identifier
+
+# Output (Market_Opportunity ONLY)
+{{
+  "Market_Opportunity": {{
+    "Market_Definition": {{
+      "TAM": "정의",
+      "SAM": "정의",
+      "SOM": "정의"
+    }},
+    "TAM_SAM_SOM_Value": {{
+      "TAM": {{ "value": 0, "unit": "N/A", "year": 0 }},
+      "SAM": {{ "value": 0, "unit": "N/A", "year": 0 }},
+      "SOM": {{ "value": 0, "unit": "N/A", "year": 0 }}
+    }},
+    "Market_Chart_Data": [
+      ["연도","TAM","SAM","SOM"]
+    ],
+    "Market_Sources": [
+      {{
+        "Claim": "핵심 주장(시장규모/성장률/정의)",
+        "Source": "기관/매체/리포트명",
+        "Year": "YYYY",
+        "Evidence": "근거 요약(한 문장)",
+        "URL_or_Identifier": "URL 또는 식별자(가능하면)"
+      }}
+    ]
+  }}
+}}
+""".strip()
+
+
+def normalize_market_chart_data(market_chart_data):
+    """
+    Market_Chart_Data를 ["연도","TAM","SAM","SOM"] 테이블로 강제 정규화
+    - 이미 맞으면 그대로
+    - 비정형이면 최대한 복구, 실패 시 최소 헤더만 반환
+    """
+    # 기본 헤더
+    header = ["연도", "TAM", "SAM", "SOM"]
+
+    if not market_chart_data:
+        return [header]
+
+    # dict로 들어오는 경우는 여기서 처리하지 않음 (시장 RAG는 Market_Opportunity 구조로 오도록 강제)
+    if not isinstance(market_chart_data, list):
+        return [header]
+
+    # 1) 이미 올바른 형태인지
+    if (
+        len(market_chart_data) >= 1
+        and isinstance(market_chart_data[0], list)
+        and len(market_chart_data[0]) >= 4
+    ):
+        h = [str(x).strip() for x in market_chart_data[0][:4]]
+        if h[0] in ["연도", "Year", "year"] and h[1].upper() == "TAM" and h[2].upper() == "SAM" and h[3].upper() == "SOM":
+            # row 길이 보정(4칸)
+            fixed = [header]
+            for r in market_chart_data[1:]:
+                if not isinstance(r, list) or len(r) < 1:
+                    continue
+                y = str(r[0]).strip()
+                tam = r[1] if len(r) > 1 else 0
+                sam = r[2] if len(r) > 2 else 0
+                som = r[3] if len(r) > 3 else 0
+                fixed.append([y, tam, sam, som])
+            return fixed if len(fixed) > 1 else [header]
+
+    # 2) 기존 단일 비교 형태: [["구분","시장규모"],["TAM",..],["SAM",..],["SOM",..]]
+    # -> 대표 연도 1개 row로 변환 (연도는 N/A)
+    if len(market_chart_data) >= 2 and isinstance(market_chart_data[0], list):
+        vmap = {}
+        for row in market_chart_data[1:]:
+            if not isinstance(row, list) or len(row) < 2:
+                continue
+            k = str(row[0]).strip().upper()
+            if k in ["TAM", "SAM", "SOM"]:
+                vmap[k] = row[1]
+        if vmap:
+            return [header, ["N/A", vmap.get("TAM", 0), vmap.get("SAM", 0), vmap.get("SOM", 0)]]
+
+    return [header]
+
+
+def merge_market(base_obj: dict, patch_obj: dict) -> dict:
+    """
+    base_obj에 patch_obj의 Market_Opportunity만 안전하게 병합
+    - patch가 Market_Opportunity를 가지고 있으면 그걸 우선 반영
+    - Market_Chart_Data는 normalize해서 항상 ["연도","TAM","SAM","SOM"] 형태 유지
+    """
+    if not isinstance(base_obj, dict):
+        return base_obj
+    if not isinstance(patch_obj, dict):
+        return base_obj
+
+    patch_mo = patch_obj.get("Market_Opportunity")
+    if not isinstance(patch_mo, dict):
+        return base_obj
+
+    base_mo = base_obj.get("Market_Opportunity")
+    if not isinstance(base_mo, dict):
+        base_mo = {}
+
+    # 필드별로 덮어쓰기/보강
+    for k in ["Market_Definition", "TAM_SAM_SOM_Value", "Market_Sources", "Source", "TAM_SAM_SOM_Text"]:
+        if k in patch_mo and patch_mo.get(k) not in [None, "", [], {}]:
+            base_mo[k] = patch_mo[k]
+
+    # Market_Chart_Data 강제 정규화
+    if "Market_Chart_Data" in patch_mo:
+        base_mo["Market_Chart_Data"] = normalize_market_chart_data(patch_mo.get("Market_Chart_Data"))
+
+    base_obj["Market_Opportunity"] = base_mo
+    return base_obj
+
 def refine_pdf_to_json_onecall(
     pdf_path: str,
     json_schema: str,
-    max_output_tokens: int = 16384,          # 기본 상향
-    retry_max_output_tokens: int = 32768     # 재시도는 더 크게
+    max_output_tokens: int = 16384,
+    retry_max_output_tokens: int = 32768,
+    enable_market_rag: bool = True,
+    market_rag_tokens: int = 8192,
+    market_rag_retry_tokens: int = 16384
 ) -> dict:
 
+    # ==========================
+    # ✅ [추가 1] Market 전용 RAG Prompt
+    # ==========================
+    def market_rag_prompt(base_obj: dict) -> str:
+        header = base_obj.get("Report_Header", {}) if isinstance(base_obj, dict) else {}
+        company = header.get("Company_Name", "해당 기업")
+        sector = header.get("Industry_Sector", "N/A")
+
+        tech = (base_obj.get("Technology_and_Moat", {}) or {}).get("Core_Technology_Name", "")
+        hint_keywords = [company, sector]
+        if tech:
+            hint_keywords.append(tech)
+
+        market_existing = (base_obj.get("Market_Opportunity", {}) or {}).get("Market_Definition", {})
+
+        return f"""
+오직 JSON만 출력(설명/코드펜스/주석 금지). JSON은 {{ 로 시작하고 }} 로 끝나야 함.
+
+당신의 임무는 '시장(Market_Opportunity)'만 VC 제출용 레벨로 보강하는 것입니다.
+반드시 google_search 도구를 사용해, "정의 + 수치 + 출처 + (가능하면) 연도별 시계열"을 채우십시오.
+확인 불가 시 값은 0, 텍스트는 "N/A"로 두되, Market_Sources에는 확인 불가 사유를 남기십시오.
+
+[입력 기업 정보]
+- Company: {company}
+- Sector: {sector}
+- Keyword Hints: {", ".join([k for k in hint_keywords if k])}
+
+[현재 Market_Definition(초안)]
+{json.dumps(market_existing, ensure_ascii=False) if isinstance(market_existing, dict) else "{}"}
+
+[요구 출력 스키마: Market_Opportunity만 출력]
+{{
+  "Market_Opportunity": {{
+    "Market_Definition": {{
+      "TAM": "TAM 정의(포함/제외 기준 명시)",
+      "SAM": "SAM 정의(세그먼트/지역/수요처 기준)",
+      "SOM": "SOM 정의(3~5년 내 도달 가정 포함)"
+    }},
+    "TAM_SAM_SOM_Value": {{
+      "TAM": {{ "value": 0, "unit": "B USD 또는 KRW", "year": 2024 }},
+      "SAM": {{ "value": 0, "unit": "B USD 또는 KRW", "year": 2025 }},
+      "SOM": {{ "value": 0, "unit": "B USD 또는 KRW", "year": 2030 }}
+    }},
+    "Market_Chart_Data": [
+      ["연도","TAM","SAM","SOM"]
+    ],
+    "Market_Sources": [
+      {{
+        "Claim": "시장정의/시장규모/성장률/세그먼트 근거",
+        "Source": "기관/매체/리포트명",
+        "Year": "YYYY",
+        "Evidence": "근거 요약(한 문장)",
+        "URL_or_Identifier": "URL 또는 식별자(가능하면)"
+      }}
+    ],
+    "TAM_SAM_SOM_Text": "정의+수치+근거를 묶어 4~6문장으로 요약"
+  }}
+}}
+
+[품질 기준(VC 레벨)]
+- TAM/SAM/SOM은 반드시 서로 포함 관계가 성립하도록 정의를 조정
+- 수치는 '연도+단위'를 명시 (예: 2024, B USD)
+- Market_Sources는 최소 3개 이상(가능하면 5개)
+- Market_Chart_Data는 가능하면 3~5개 연도 시계열을 채우되, 추정/보간 금지(없으면 헤더만)
+""".strip()
+
+    # ==========================
+    # ✅ [추가 2] Market 결과를 base JSON에 안전 병합
+    # ==========================
+    def merge_market(base_obj: dict, m_patch: dict) -> dict:
+        if not isinstance(base_obj, dict):
+            return base_obj
+        if not isinstance(m_patch, dict):
+            return base_obj
+
+        mo = m_patch.get("Market_Opportunity")
+        if not isinstance(mo, dict):
+            mo = m_patch
+
+        base_obj.setdefault("Market_Opportunity", {})
+        if not isinstance(base_obj["Market_Opportunity"], dict):
+            base_obj["Market_Opportunity"] = {}
+
+        # 필요한 키만 덮어쓰기
+        for k in ["Market_Definition", "TAM_SAM_SOM_Value", "Market_Sources", "Market_Chart_Data", "TAM_SAM_SOM_Text"]:
+            v = mo.get(k)
+            if v is not None:
+                base_obj["Market_Opportunity"][k] = v
+
+        return base_obj
+
+    # ==========================
+    # ✅ [추가 3] Market RAG 실행(+ MAX_TOKENS 재시도) 후 merge
+    # ==========================
+    def run_market_rag_and_merge(base_obj: dict):
+        if not enable_market_rag or not isinstance(base_obj, dict):
+            return base_obj
+
+        m_prompt = market_rag_prompt(base_obj)
+
+        def post_market(prompt: str, tag: str, tokens: int):
+            payload_m = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "tools": [{"google_search": {}}],
+                "generationConfig": {"temperature": 0.1, "maxOutputTokens": tokens}
+            }
+            rm = _post_gemini(payload_m, timeout=180)
+            if not rm.get("ok"):
+                return {"ok": False, "status": rm.get("status"), "message": rm.get("text"), "raw": None}
+
+            _debug_dump_response(f"{tag}_{os.path.basename(pdf_path)}", rm["json"])
+            m_text = _extract_text(rm["json"])
+            finish = (((rm["json"].get("candidates") or [{}])[0]).get("finishReason") or "")
+            return {"ok": True, "text": m_text, "finish": finish, "raw": rm["json"]}
+
+        rmk1 = post_market(m_prompt, "market_rag", market_rag_tokens)
+        if not rmk1.get("ok"):
+            base_obj["_market_rag_warn"] = {"error": f"API Error {rmk1.get('status')}", "message": rmk1.get("message")}
+            return base_obj
+
+        if not rmk1.get("text"):
+            base_obj["_market_rag_warn"] = {"error": "EmptyText", "message": "시장 RAG 응답 텍스트 비어있음"}
+            return base_obj
+
+        # MAX_TOKENS면 compact 재시도
+        if rmk1.get("finish") == "MAX_TOKENS":
+            compact_prompt = m_prompt + "\n\n[추가 규칙] 최대한 간결히: Market_Sources는 5개 이내, Evidence는 120자 이내."
+            rmk2 = post_market(compact_prompt, "market_rag_retry_compact", market_rag_retry_tokens)
+
+            if rmk2.get("ok") and rmk2.get("text") and rmk2.get("finish") != "MAX_TOKENS":
+                try:
+                    patch = _safe_json_loads(rmk2["text"])
+                    return merge_market(base_obj, patch)
+                except JSONDecodeError:
+                    base_obj["_market_rag_warn"] = {"error": "JSONDecodeError", "message": "시장 RAG(재시도) JSON 파싱 실패", "preview": rmk2["text"][:1200]}
+                    return base_obj
+
+            base_obj["_market_rag_warn"] = {"error": "TruncatedOutput", "message": "시장 RAG도 MAX_TOKENS로 잘려 병합 불가", "preview": rmk1["text"][:1200]}
+            return base_obj
+
+        # 정상 파싱/병합
+        try:
+            patch = _safe_json_loads(rmk1["text"])
+            return merge_market(base_obj, patch)
+        except JSONDecodeError:
+            base_obj["_market_rag_warn"] = {"error": "JSONDecodeError", "message": "시장 RAG JSON 파싱 실패", "preview": rmk1["text"][:1200]}
+            return base_obj
+
+    # ==========================
+    # 기존 call_once 그대로
+    # ==========================
     def call_once(prompt: str, tag: str, tokens: int):
         payload = {
             "contents": [{
@@ -269,10 +608,7 @@ def refine_pdf_to_json_onecall(
                 ]
             }],
             "tools": [{"google_search": {}}],
-            "generationConfig": {
-                "temperature": 0.1,
-                "maxOutputTokens": tokens,
-            }
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": tokens}
         }
         r = _post_gemini(payload, timeout=240)
         if not r.get("ok"):
@@ -283,6 +619,9 @@ def refine_pdf_to_json_onecall(
         finish = (((r["json"].get("candidates") or [{}])[0]).get("finishReason") or "")
         return {"ok": True, "out_text": out_text, "finish": finish, "raw": r["json"]}
 
+    # ==========================
+    # 기존 prompt_normal 그대로
+    # ==========================
     prompt_normal = f"""
 오직 JSON만 출력(설명/마크다운/코드펜스/주석 금지).
 JSON은 {{ 로 시작하고 }} 로 끝나야 함.
@@ -305,18 +644,22 @@ JSON은 {{ 로 시작하고 }} 로 끝나야 함.
     r1 = call_once(prompt_normal, "onecall", max_output_tokens)
     if not r1.get("ok"):
         return {"error": r1["error"], "message": r1["message"], "stage": "onecall"}
-
     if not r1.get("out_text"):
         return {"error": "EmptyText", "message": "응답 텍스트가 비어있습니다.", "stage": "onecall"}
 
-    # MAX_TOKENS 아니면 그대로 파싱
     if r1["finish"] != "MAX_TOKENS":
         try:
-            return _safe_json_loads(r1["out_text"])
+            base_obj = _safe_json_loads(r1["out_text"])
         except JSONDecodeError:
             return {"error": "JSONDecodeError", "message": "JSON 파싱 실패", "preview": r1["out_text"][:4000], "stage": "onecall"}
 
-    # MAX_TOKENS면: retry_compact + 토큰 더 크게
+        # ✅ Market RAG 2번째 호출(+ MAX_TOKENS 재시도 내장)
+        base_obj = run_market_rag_and_merge(base_obj)
+        return base_obj
+
+    # ==========================
+    # MAX_TOKENS일 때 retry_compact
+    # ==========================
     prompt_compact = f"""
 오직 JSON만 출력. (설명/코드펜스/주석 금지)
 JSON은 {{ 로 시작하고 }} 로 끝나야 함.
@@ -340,10 +683,8 @@ PDF에 없는 내용만 검색, 출처(기관/매체/연도) 포함.
     r2 = call_once(prompt_compact, "onecall_retry_compact", retry_max_output_tokens)
     if not r2.get("ok"):
         return {"error": r2["error"], "message": r2["message"], "stage": "onecall_retry_compact"}
-
     if not r2.get("out_text"):
         return {"error": "EmptyText", "message": "재시도 응답 텍스트가 비어있습니다.", "stage": "onecall_retry_compact"}
-
     if r2["finish"] == "MAX_TOKENS":
         return {
             "error": "TruncatedOutput",
@@ -353,9 +694,13 @@ PDF에 없는 내용만 검색, 출처(기관/매체/연도) 포함.
         }
 
     try:
-        return _safe_json_loads(r2["out_text"])
+        base_obj = _safe_json_loads(r2["out_text"])
     except JSONDecodeError:
         return {"error": "JSONDecodeError", "message": "재시도 JSON 파싱 실패", "preview": r2["out_text"][:4000], "stage": "onecall_retry_compact"}
+
+    # ✅ Market RAG 2번째 호출(+ MAX_TOKENS 재시도 내장)
+    base_obj = run_market_rag_and_merge(base_obj)
+    return base_obj
 
 # ==========================
 # 1단계: PDF -> 핵심 사실/수치/근거 추출(LLM 호출, 비검색)
