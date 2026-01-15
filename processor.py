@@ -15,11 +15,9 @@ TARGET_MODEL = "models/gemini-2.0-flash"
 API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 HEADERS = {"Content-Type": "application/json"}
 
-# 색상 상수
-COLOR_RED = "indianred"
-COLOR_YELLOW = "khaki"
-COLOR_BLUE = "cornflowerblue"
-
+# =========================================================
+# 1. Helper Functions (String & JSON Processing)
+# =========================================================
 def _strip_code_fences(text: str) -> str:
     if not text: return ""
     s = text.strip()
@@ -118,18 +116,19 @@ def _pdf_part_from_path(pdf_path: str) -> dict:
     }
 
 # =========================================================
-# JSON Schema
+# 2. JSON Schema Definition
 # =========================================================
 JSON_SCHEMA = r"""
 {
   "Report_Header": {
     "Company_Name": "기업명",
     "CEO_Name": "대표자명",
-    "Industry_Sector": "산업분야",
+    "Industry_Sector": "세부 산업분야 (예: 반도체 장비, AI 솔루션)",
+    "Industry_Classification": "산업 대분류 (바이오 / IT / 제조업 / 금융업 / 모빌리티 / 기타)",
     "Analyst": "LUCEN Investment Intelligence",
     "Investment_Rating": "강력 매수 / 긍정적 / 관망 / 부정적"
   },
-  "Investment_Thesis_Summary": "핵심 투자 하이라이트 (3줄 요약)",
+  "Investment_Thesis_Summary": "핵심 투자 하이라이트 (3~5줄로 상세하게 기술)",
   
   "Financial_Status": {
     "Detailed_Balance_Sheet": {
@@ -150,34 +149,78 @@ JSON_SCHEMA = r"""
        "Operating_Profit": ["값", "값", "값"],
        "Net_Profit": ["값", "값", "값"]
     },
-    "Key_Financial_Commentary": "재무 실적 및 향후 전망 요약",
+    "Key_Financial_Commentary": "재무 실적 분석 및 향후 추정치에 대한 상세 설명 (성장률, 이익률 등 포함)",
     "Investment_History": [
       { "Date": "YYYY.MM", "Round": "Series A 등", "Amount": "금액", "Investor": "투자자" }
-    ]
-  },
-
-  "Growth_Potential": {
-    "Target_Market_Trends": [
-      { "Type": "기사/특허/인터뷰", "Source": "출처", "Content": "내용" }
     ],
+    "Future_Revenue_Structure": {
+        "Business_Model": "비즈니스 모델(BM) 및 수익 창출 구조 상세 서술",
+        "Future_Cash_Cow": "향후 주력 캐시카우(Cash Cow) 및 이익 기여도 분석"
+    }
+  },
+  "Growth_Potential": {
+    "Target_Market_Analysis": {
+        "Target_Area": "타겟 영역 정의 (구체적 시장 세분화)",
+        "Market_Characteristics": "해당 시장의 주요 특성 및 진입 장벽",
+        "Competitive_Positioning": "경쟁사 대비 포지셔닝 및 차별점"
+    },
+    "Target_Market_Trends": [
+      { "Type": "기사/특허/인터뷰", "Source": "출처", "Content": "시장 동향 내용 요약" }
+    ],
+    "LO_Exit_Strategy": {
+        "Verified_Signals": ["이미 검증된 시그널 1", "시그널 2 (레퍼런스)"],
+        "Expected_LO_Scenarios": [
+            { "Category": "구분 (예: 글로벌 제약사 기술이전)", "Probability": "가능성 (상/중/하)", "Comment": "상세 코멘트" }
+        ],
+        "Valuation_Range": "적정 가치 범위 (보수적 관점에서의 산정 근거)"
+    },
     "Export_and_Contract_Stats": {
       "Export_Graph_Data": [["Year", "Value"]],
       "Contract_Count_Graph_Data": [["Year", "Count"]],
       "Sales_Graph_Data": [["Year", "Revenue"]]
     }
   },
-  "Problem_and_Solution": { "Market_Pain_Points": [".."], "Solution_Value_Prop": [".."] },
-  "Technology_and_Moat": { "Core_Technology_Name": "..", "Technical_Details": [".."] },
-  "Key_Risks_and_Mitigation": [ { "Risk_Factor": "..", "Mitigation_Strategy": ".." } ],
-  "Final_Conclusion": "종합 의견"
+  "Technology_and_Pipeline": {
+      "Market_Pain_Points": [
+          "기존 기술/시장의 한계점 1", 
+          "미충족 수요(Unmet Needs) 2"
+      ], 
+      "Solution_and_Core_Tech": {
+          "Technology_Name": "핵심 기술 또는 솔루션 명칭",
+          "Key_Features": ["차별화된 기능 1", "기능 2"]
+      },
+      "Pipeline_Development_Status": {
+          "Core_Platform_Details": "핵심 플랫폼 기술의 구동 원리 및 아키텍처 상세 설명",
+          "Technical_Risk_Analysis": "개발 과정의 기술적 난관(Hurdle) 및 위험 요소 분석",
+          "Technical_Conclusion": "기술 경쟁력 종합 평가 (경쟁우위 및 성공 가능성)"
+      }
+  },
+  "Key_Personnel_and_Organization": {
+      "CEO_Qualitative_Assessment": "대표이사의 전문성, 창업/Exit 경험, 리더십, 업계 네트워크 등 VC 관점의 정성적 평가",
+      "Key_Manpower_Capabilities": "주요 C-Level 및 핵심 연구 인력의 이력, R&D 조직 구성 및 팀워크 강점 분석"
+  },
+  "Key_Risks_and_Mitigation": [ 
+      { "Risk_Factor": "리스크 요인", "Mitigation_Strategy": "대응 방안" } 
+  ],
+  "Valuation_and_Judgment": {
+      "Valuation_Table": [
+          { "Round": "라운드", "Pre_Money": "Pre-Money", "Post_Money": "Post-Money", "Comment": "비고" }
+      ],
+      "Three_Axis_Assessment": {
+          "Technology_Rating": "기술성 평가",
+          "Growth_Rating": "성장성 평가",
+          "Exit_Rating": "회수 가능성 평가"
+      },
+      "Suitable_Investor_Type": "적합 투자자 유형"
+  },
+  "Final_Conclusion": "종합 투자의견 (한 문단으로 상세히)"
 }
 """.strip()
 
 # =========================================================
-# ✅ [Fix] Null Safe Access Helpers
+# 3. RAG & Data Validation Helpers
 # =========================================================
 def growth_rag_prompt(base_obj: dict) -> str:
-    # .get() 뒤에 or {}를 붙여 None이 반환되어도 빈 딕셔너리로 처리되게 함 (Null Safety)
     header = base_obj.get("Report_Header") or {}
     company = header.get("Company_Name", "해당 기업")
     
@@ -186,11 +229,11 @@ def growth_rag_prompt(base_obj: dict) -> str:
     
     return f"""
 오직 JSON만 출력.
-'{company}'의 부족한 재무 및 투자 정보를 검색하여 보강하십시오.
+'{company}'의 부족한 재무 및 투자 정보를 웹 검색을 통해 상세하게 보강하십시오.
 
 [검색 목표]
-1. **투자 유치 이력**: 설립 이후 모든 투자 라운드(Seed, Series A 등), 금액, 투자자 정보를 검색하여 리스트를 완성하십시오.
-2. **최근 실적 및 전망**: 최근 3년 매출액/영업이익 추이와 향후 성장 전망(수출, 계약 등)을 검색하십시오.
+1. **투자 유치 이력 (상세)**: 설립 이후 모든 투자 라운드(Seed, Series A/B 등), 금액, 참여 투자자(VC) 리스트를 완성하십시오.
+2. **최근 실적 및 전망**: 최근 3~5년 매출액, 영업이익 추이와 향후 성장 전망 수치를 검색하여 채우십시오.
 
 [현재 보유 데이터]
 투자이력: {json.dumps(existing_history, ensure_ascii=False)}
@@ -213,13 +256,9 @@ def growth_rag_prompt(base_obj: dict) -> str:
 def validate_growth_data(base_obj: dict) -> dict:
     if not isinstance(base_obj, dict): return base_obj
     
-    # None 체크 강화
     gp = base_obj.get("Growth_Potential") or {}
-    if not isinstance(gp, dict): return base_obj
-    
     stats = gp.get("Export_and_Contract_Stats") or {}
-    if not isinstance(stats, dict): return base_obj
-
+    
     def normalize_chart_list(data_list, header_name):
         default = [["Year", header_name]]
         if not isinstance(data_list, list) or len(data_list) < 2:
@@ -231,44 +270,35 @@ def validate_growth_data(base_obj: dict) -> dict:
                 try:
                     y = str(row[0]).replace("년","").strip()
                     val_str = str(row[1]).replace(",","").replace("억","").replace("원","").strip()
-                    # 값이 N/A거나 비어있으면 0으로 처리하여 그래프 오류 방지
                     v = 0 if val_str in ["N/A", "", "-"] else float(val_str)
                     clean_rows.append([y, v])
                 except:
                     pass
         return clean_rows if len(clean_rows) > 1 else default
 
-    stats["Export_Graph_Data"] = normalize_chart_list(stats.get("Export_Graph_Data"), "Export_Value")
-    stats["Contract_Count_Graph_Data"] = normalize_chart_list(stats.get("Contract_Count_Graph_Data"), "Count")
-    stats["Revenue_Graph_Data"] = normalize_chart_list(stats.get("Revenue_Graph_Data"), "Revenue")
-    
+    if isinstance(stats, dict):
+        stats["Export_Graph_Data"] = normalize_chart_list(stats.get("Export_Graph_Data"), "Export_Value")
+        stats["Contract_Count_Graph_Data"] = normalize_chart_list(stats.get("Contract_Count_Graph_Data"), "Count")
+        stats["Revenue_Graph_Data"] = normalize_chart_list(stats.get("Revenue_Graph_Data"), "Revenue")
+        gp["Export_and_Contract_Stats"] = stats
+        base_obj["Growth_Potential"] = gp
+
     return base_obj
 
 def merge_growth_info(base_obj: dict, patch: dict) -> dict:
     if not isinstance(base_obj, dict) or not isinstance(patch, dict):
         return base_obj
 
-    # 1. Financial_Status 병합 (Null Safety 강화)
-    base_fin = base_obj.get("Financial_Status")
-    if not isinstance(base_fin, dict):
-        base_fin = {}
-        base_obj["Financial_Status"] = base_fin
-    
+    base_fin = base_obj.setdefault("Financial_Status", {})
     patch_fin = patch.get("Financial_Status") or {}
     
-    # 투자 이력 병합
     if patch_fin.get("Investment_History"):
         curr_hist = base_fin.get("Investment_History") or []
-        # RAG 결과가 더 많으면 덮어쓰기
+        # RAG 결과가 더 충실하면 교체
         if len(patch_fin["Investment_History"]) > len(curr_hist):
              base_fin["Investment_History"] = patch_fin["Investment_History"]
 
-    # 2. Growth Potential 병합 (Null Safety 강화)
-    base_gp = base_obj.get("Growth_Potential")
-    if not isinstance(base_gp, dict):
-        base_gp = {}
-        base_obj["Growth_Potential"] = base_gp
-    
+    base_gp = base_obj.setdefault("Growth_Potential", {})
     patch_gp = patch.get("Growth_Potential") or {}
     
     if patch_gp:
@@ -277,11 +307,7 @@ def merge_growth_info(base_obj: dict, patch: dict) -> dict:
                 base_gp["Target_Market_Trends"] = patch_gp["Target_Market_Trends"]
             
         if patch_gp.get("Export_and_Contract_Stats"):
-            base_stats = base_gp.get("Export_and_Contract_Stats")
-            if not isinstance(base_stats, dict):
-                base_stats = {}
-                base_gp["Export_and_Contract_Stats"] = base_stats
-            
+            base_stats = base_gp.setdefault("Export_and_Contract_Stats", {})
             patch_stats = patch_gp["Export_and_Contract_Stats"]
             for key in ["Export_Graph_Data", "Contract_Count_Graph_Data", "Sales_Graph_Data"]:
                 if patch_stats.get(key) and len(patch_stats[key]) > 1:
@@ -292,7 +318,7 @@ def merge_growth_info(base_obj: dict, patch: dict) -> dict:
     return validate_growth_data(base_obj)
 
 # =========================================================
-# Main Logic
+# 4. Main Pipeline Logic
 # =========================================================
 def refine_pdf_to_json_onecall(
     pdf_path: str,
@@ -302,24 +328,25 @@ def refine_pdf_to_json_onecall(
     enable_rag: bool = True
 ) -> dict:
 
-    # 프롬프트: 텍스트 추출의 정교함 유지 + 비정형/추정 데이터 추출 강화
     prompt_pdf = f"""
 # [Role]
-당신은 VC 수석 심사역입니다. IR 자료(PDF)를 정밀 분석하여 JSON 데이터를 추출하십시오.
+당신은 'LUCEN Investment Intelligence'의 수석 심사역입니다. 
+제공된 IR 자료(PDF)를 심층 분석하여, 투자자가 의사결정을 내릴 수 있는 **상세하고 구체적인** 보고서 데이터를 JSON으로 추출하십시오.
 
-# [Extraction Guidelines]
-1. **텍스트 기반 정밀 추출 (Text Data)**:
-   - 문서 내에 존재하는 텍스트 테이블(재무상태표, 손익계산서 등)은 수치를 정확하게 옮기십시오.
-   - 기술 설명, 시장 문제점 등 텍스트 정보는 요약하여 추출하십시오.
+# [Extraction Rules - Very Important]
+1. **텍스트 데이터 정밀 추출**: 
+   - 문서 내 기술, 시장, 리스크 정보를 요약하십시오.
+   - 'Industry_Classification' (산업 대분류)을 반드시 기입하십시오.
+   
+2. **재무 데이터 "Fact-Check"**:
+   - 텍스트 표, 이미지 표, 그래프를 모두 분석하여 'Financial_Status'를 채우십시오.
+   - **과거 실적이 없으면 '추정치(Forecast/Plan)'라도 반드시 추출하십시오.** (예: 2025(E))
+   - 데이터가 흩어져 있어도 연도별로 모아서 'Income_Statement_Summary'에 기입하십시오.
+   - **절대 'null'을 쉽게 반환하지 마십시오.**
 
-2. **추정 재무제표 필독 (Estimated Financials)**:
-   - 과거 실적뿐만 아니라 **'(E)', 'Plan', 'Forecast'** 등이 포함된 **미래 추정 손익계산서/재무상태표**가 있다면 반드시 추출하십시오.
-   - 예: 2025(E), 2026(Plan) 등의 컬럼이 있으면 Income_Statement_Summary에 포함시킬 것.
-
-3. **비정형/시각 데이터 해석 (Visual/Unstructured Data)**:
-   - 텍스트로 명시되지 않고 **도표, 다이어그램, 그래프**로만 존재하는 정보를 데이터화 하십시오.
-   - **투자 이력(Investment History)**: 'History', 'Milestone', 'Funding' 관련 타임라인이나 다이어그램(예: Seed -> Series A 흐름도)을 해석하여 Date, Round, Amount, Investor를 추출하십시오.
-   - **그래프(Charts)**: 매출/수출 추이 막대 그래프 등을 발견하면, 각 막대의 높이를 근사치 숫자로 변환하여 'Graph_Data'에 입력하십시오.
+3. **비정형/시각 데이터 해석**:
+   - **투자 이력**: 문서 내 'History', 'Timeline' 섹션의 다이어그램을 해석하여 투자 라운드, 금액, 투자자를 추출하십시오.
+   - **그래프**: 막대 그래프의 높이를 시각적으로 해석하여 대략적인 수치라도 'Graph_Data'에 입력하십시오.
 
 # [Output Schema]
 {json_schema}
@@ -332,7 +359,7 @@ def refine_pdf_to_json_onecall(
                 _pdf_part_from_path(pdf_path)
             ]
         }],
-        "generationConfig": {"temperature": 0.1, "maxOutputTokens": max_output_tokens}
+        "generationConfig": {"temperature": 0.2, "maxOutputTokens": max_output_tokens}
     }, timeout=240)
 
     if not r1.get("ok"):
@@ -341,10 +368,10 @@ def refine_pdf_to_json_onecall(
     text1 = _extract_text(r1["json"])
     base_obj = _safe_json_loads(text1)
     
-    # 1차 파싱 실패 시 빈 객체로 진행 (NoneType 방지)
     if not isinstance(base_obj, dict):
         base_obj = {}
 
+    # RAG Enrichment
     if enable_rag:
         try:
             rag_p = growth_rag_prompt(base_obj)
