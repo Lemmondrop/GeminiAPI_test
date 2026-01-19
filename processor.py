@@ -195,21 +195,37 @@ JSON_SCHEMA = r"""
           "Technical_Conclusion": "기술 경쟁력 종합 평가 (경쟁우위 및 성공 가능성)"
       }
   },
-  "Key_Personnel_and_Organization": {
-      "CEO_Qualitative_Assessment": "대표이사의 전문성, 창업/Exit 경험, 리더십, 업계 네트워크 등 VC 관점의 정성적 평가",
-      "Key_Manpower_Capabilities": "주요 C-Level 및 핵심 연구 인력의 이력, R&D 조직 구성 및 팀워크 강점 분석"
+  "Key_Personnel": {
+      "CEO_Reference": {
+          "Name": "성명",
+          "Background_and_Education": "학력 및 주요 경력 상세 (연도별 나열)",
+          "Core_Competency": "핵심 역량 및 전문성 (기술 이해도, 영업력, 경영 능력 등)",
+          "Management_Philosophy": "경영 철학 및 비전",
+          "VC_Perspective_Evaluation": "VC 관점에서의 대표이사 종합 평가 (리더십, 평판, 성공 가능성 추론)"
+      },
+      "Team_Capability": {
+          "Key_Executives": ["주요 임원(CTO, CFO 등) 이력 및 역량 상세"],
+          "Organization_Strengths": "조직 구성의 강점 (개발팀 비율, 팀워크, 전문성 등)",
+          "Advisory_Board": "자문위원단 및 외부 네트워크 역량"
+      }
   },
   "Key_Risks_and_Mitigation": [ 
       { "Risk_Factor": "리스크 요인", "Mitigation_Strategy": "대응 방안" } 
   ],
   "Valuation_and_Judgment": {
       "Valuation_Table": [
-          { "Round": "라운드", "Pre_Money": "Pre-Money", "Post_Money": "Post-Money", "Comment": "비고" }
+          { "Round": "라운드", "Pre_Money": "값", "Post_Money": "값", "Comment": "비고" }
       ],
+      ""Valuation_Logic_Detail": {
+          "Peer_Group": ["유사기업 A (시총/매출)", "유사기업 B (시총/매출)"],
+          "Applied_Multiple": "적용 PSR 또는 PER 배수",
+          "Target_Net_Income": "적용 매출액 또는 순이익",
+          "Calculation_Rationale": "상세 계산식 (Peer 평균 배수 x 당사 실적)"
+      },
       "Three_Axis_Assessment": {
           "Technology_Rating": "기술성 평가",
           "Growth_Rating": "성장성 평가",
-          "Exit_Rating": "회수 가능성 평가"
+          "Exit_Rating": "회수성 평가"
       },
       "Suitable_Investor_Type": "적합 투자자 유형"
   },
@@ -224,16 +240,54 @@ def growth_rag_prompt(base_obj: dict) -> str:
     header = base_obj.get("Report_Header") or {}
     company = header.get("Company_Name", "해당 기업")
     
+    ceo_name = header.get("CEO_Name", "대표이사")
+    
     fin_status = base_obj.get("Financial_Status") or {}
     existing_history = fin_status.get("Investment_History") or []
     
+    # [핵심] 검색어 조합 생성
+    search_keywords = f"""
+    1. "{company}" 매출액 영업이익
+    2. "{company}" "{ceo_name}" 프로필 인터뷰 학력
+    3. "{company}" 투자 유치 밸류에이션
+    4. "{company}" 기술이전 L/O 계약
+    5. "{company}" 채용 기업정보 (임원진 확인용)
+    6. "{company}" 관련 상장자 PER PSR
+    """
+
     return f"""
 오직 JSON만 출력.
 '{company}'의 부족한 재무 및 투자 정보를 웹 검색을 통해 상세하게 보강하십시오.
+'{company}'({ceo_name} 대표)에 대해 다음 키워드로 심층 검색하여 정보를 보강하십시오.
+'{company}'({ceo_name})의 투자 심사를 위해 다음 정보를 정밀 검색하십시오.
+"{company}" 경쟁사 주가 PER 시가총액
+"{company}" 관련 산업 평균 PER PBR
+"{company}" IPO 주관사 밸류에이션
+"{company}" 매출액 영업이익 추이
+검색 키워드 예시: {search_keywords}
 
 [검색 목표]
 1. **투자 유치 이력 (상세)**: 설립 이후 모든 투자 라운드(Seed, Series A/B 등), 금액, 참여 투자자(VC) 리스트를 완성하십시오.
 2. **최근 실적 및 전망**: 최근 3~5년 매출액, 영업이익 추이와 향후 성장 전망 수치를 검색하여 채우십시오.
+3. **CEO 심층 검증**: 
+    - '{ceo_name}'의 전체 학력, 경력(연도 포함), 과거 창업/Exit 이력, 언론 인터뷰, 업계 평판을 최대한 상세히 검색하십시오.
+    - 정보가 없으면 '채용 공고', '뉴스 기사', 'LINKEDIN' 등을 통해 유추하십시오.
+    - 대표이사의 출신 대학, 전 직장, 인터뷰 내용을 찾아내어 'CEO_Reference'를 완성하십시오.
+    - 주요 임원(CTO, CFO 등)의 이름을 찾아내어 'Team_Capability'에 추가하십시오.
+4. **핵심 인력 역량**: 주요 임원진(CTO, CFO 등)의 실명과 이력, 전문성을 검색하십시오.
+5. **L/O 및 Exit 전략**:
+   - 해당 기업의 기사가 없다면, **동종 업계의 유사한 M&A/IPO 사례**를 찾아 'Valuation_Range'의 근거로 삼으십시오.
+6. **유사 기업(Peer Group) 및 밸류에이션**:
+   - 동종 업계 상장사 중 사업 모델이 유사한 기업 3~5개를 찾고, 이들의 현재 PER(주가수익비율) 또는 PSR을 검색하십시오.
+   - 예: "{company} 경쟁사 주가", "{company} 관련주 PER"
+7. **미래 실적 추정 근거**:
+   - 회사의 목표 매출이나 영업이익이 언급된 기사, 인터뷰를 찾으십시오.
+   - 없다면 동종 업계 평균 성장률을 검색하십시오.
+8. **Peer Group (유사기업) 데이터**:
+   - 경쟁 상장사 3곳의 **"시가총액(Market Cap)"**과 **"연간 매출액(Revenue)"**을 찾으십시오.
+   - 예: "A사 시총 5,000억 / 매출 500억 (PSR 10배)"
+9. **Target Company (당사) 데이터**:
+   - 당사의 **최근 투자 유치 금액(Pre/Post Value)** 혹은 **목표 매출액**을 찾으십시오.
 
 [현재 보유 데이터]
 투자이력: {json.dumps(existing_history, ensure_ascii=False)}
@@ -249,7 +303,25 @@ def growth_rag_prompt(base_obj: dict) -> str:
     "Export_and_Contract_Stats": {{
       "Sales_Graph_Data": [ ["Year", "Revenue"] ]
     }}
-  }}
+  }},
+  "Key_Personnel": {{
+    "CEO_Reference": {{
+        "Background_and_Education": "검색된 상세 이력",
+        "Core_Competency": "전문성 분석",
+        "Management_Philosophy": "인터뷰 기반 경영 철학"
+    }},
+    "Team_Capability": {{
+        "Key_Executives": ["임원 1 상세 이력", "임원 2 상세 이력"],
+        "Organization_Strengths": "조직 강점",
+        "Advisory_Board": "자문단 정보"
+    }}
+  }},
+  "Valuation_and_Judgment": {{
+      "Valuation_Logic_Detail": {{
+          "Peer_Group": ["경쟁사 A (시총 OOO억, 매출 OOO억)", "경쟁사 B (시총 OOO억, 매출 OOO억)"],
+          "Applied_Multiple": "업계 평균 PSR O배 또는 PER O배"
+      }}
+  }},
 }}
 """.strip()
 
@@ -315,6 +387,34 @@ def merge_growth_info(base_obj: dict, patch: dict) -> dict:
                     if len(curr_stats) <= 1:
                         base_stats[key] = patch_stats[key]
 
+    # Personnel Merge (Deep Merge - 수정됨)
+    if patch.get("Key_Personnel"):
+        base_kp = base_obj.setdefault("Key_Personnel", {})
+        patch_kp = patch.get("Key_Personnel")
+        
+        # CEO 정보 보강
+        if patch_kp.get("CEO_Reference"):
+            base_ceo = base_kp.setdefault("CEO_Reference", {})
+            patch_ceo = patch_kp["CEO_Reference"]
+            for k, v in patch_ceo.items():
+                if v and len(str(v)) > len(str(base_ceo.get(k, ""))): 
+                    base_ceo[k] = v
+        
+        # 임원 정보 보강 (수정됨: 모든 하위 항목 업데이트)
+        if patch_kp.get("Team_Capability"):
+            base_team = base_kp.setdefault("Team_Capability", {})
+            patch_team = patch_kp["Team_Capability"]
+            for k, v in patch_team.items(): # Key_Executives 뿐만 아니라 모든 항목 순회
+                if v:
+                    base_team[k] = v
+
+    # 3. Valuation Logic Merge
+    if patch.get("Valuation_and_Judgment"):
+        base_val = base_obj.setdefault("Valuation_and_Judgment", {})
+        patch_val = patch.get("Valuation_and_Judgment")
+        if patch_val.get("Valuation_Logic_Detail"):
+            base_val["Valuation_Logic_Detail"] = patch_val["Valuation_Logic_Detail"]
+
     return validate_growth_data(base_obj)
 
 # =========================================================
@@ -335,18 +435,51 @@ def refine_pdf_to_json_onecall(
 
 # [Extraction Rules - Very Important]
 1. **텍스트 데이터 정밀 추출**: 
-   - 문서 내 기술, 시장, 리스크 정보를 요약하십시오.
+   - 문서 내 기술, 시장, 리스크 정보를 요약하지 말고 최대한 상세히 서술하십시오.
    - 'Industry_Classification' (산업 대분류)을 반드시 기입하십시오.
    
 2. **재무 데이터 "Fact-Check"**:
    - 텍스트 표, 이미지 표, 그래프를 모두 분석하여 'Financial_Status'를 채우십시오.
    - **과거 실적이 없으면 '추정치(Forecast/Plan)'라도 반드시 추출하십시오.** (예: 2025(E))
    - 데이터가 흩어져 있어도 연도별로 모아서 'Income_Statement_Summary'에 기입하십시오.
-   - **절대 'null'을 쉽게 반환하지 마십시오.**
+   - **모든 수치에는 단위를 명시하고, 절대 'null'을 쉽게 반환하지 마십시오.**
 
 3. **비정형/시각 데이터 해석**:
    - **투자 이력**: 문서 내 'History', 'Timeline' 섹션의 다이어그램을 해석하여 투자 라운드, 금액, 투자자를 추출하십시오.
    - **그래프**: 막대 그래프의 높이를 시각적으로 해석하여 대략적인 수치라도 'Graph_Data'에 입력하십시오.
+
+4. **대표이사 상세 분석**:
+   - PDF 내의 프로필 표, 이력서, 인터뷰 내용을 모두 찾아내어 학력, 경력(연도별), 수상 이력을 나열하십시오.
+   - 이를 바탕으로 대표이사의 전문성, 리더십, 업계 네트워크를 **VC 관점에서 평가(추론)**하여 서술하십시오.
+   - 예: "현대자동차 연구원 출신으로 자동차 산업에 대한 깊은 이해와 15년 이상의 SW 개발 경험을 보유..."
+
+5. **핵심 인력 및 조직도**:
+   - 조직도 이미지나 표를 해석하여 주요 C-Level 임원의 실명과 이력을 추출하십시오.
+   - 연구소 인력 비중, 팀 구성의 강점 등을 구체적으로 서술하십시오.
+
+6. **★ 5-2. Valuation Engine (Ratio Method)**:
+   **RAG로 수집된 Peer Group 데이터를 사용하여, 직접 비율 계산을 수행하고 결과를 산출하십시오.**
+   - **Step 1: 데이터 확인 및 Peer 지표 산출**
+     - RAG 결과에 있는 경쟁사(Peer)들의 '시가총액'과 '매출액'을 확인하십시오.
+     - 각 경쟁사의 **PSR (시가총액 ÷ 매출액)**을 계산하십시오. (이익이 있다면 PER 계산)
+     - 예: "경쟁사 A (시총 5000억/매출 500억 = PSR 10배)"
+   - **Step 2: 타겟 기업 지표 확인**
+     - IR 자료 내의 **'목표 매출액'** 또는 **'현재 매출액'**을 찾으십시오.
+     - 매출액이 없다면 **'투자 유치 금액(Post-Money)'**을 매출의 5~10배로 역산하여 추정 매출로 가정하십시오.
+   - **Step 3: 가치 환산 (Calculation)**
+     - **공식:** [타겟 기업 지표] × [Peer 평균 PSR/PER] = [추정 기업가치]
+     - 예: "당사 추정 매출 200억 × Peer 평균 PSR 10배 = **2,000억 원**"
+     - 이 계산 과정을 'Calculation_Rationale' 필드에 상세히 서술하십시오.
+
+7. **★ 5-3. 종합 투자 판단 로직**:
+   - **기술성**: 기술의 독창성, 진입장벽(특허), 확장성을 평가하십시오.
+   - **성장성**: 타겟 시장의 CAGR, 회사의 매출 성장률을 근거로 평가하십시오.
+   - **회수성**: IPO 예상 시점(기술특례 등) 또는 M&A 가능성을 평가하십시오.
+   
+# [General Rules]
+1. **텍스트 데이터**: 요약하지 말고 최대한 상세히 서술하십시오.
+2. **재무 데이터**: 모든 수치에 단위를 명시하십시오.
+3. **인력 분석**: 대표이사의 역량을 구체적으로 평가하십시오.
 
 # [Output Schema]
 {json_schema}

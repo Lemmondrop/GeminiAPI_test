@@ -549,36 +549,25 @@ def save_as_word_report(data, file_name, target_dir):
     
     doc.add_page_break()
 
-    # -----------------------------------------------------
-    # [NEW] 4. 주요 인력 및 조직 (Key Personnel)
-    # -----------------------------------------------------
-    doc.add_heading("4. 주요 인력 및 조직 (Key Personnel)", level=1)
+    # [Section 4] 주요 인력 및 조직 (✅ 대폭 수정됨)
+    doc.add_heading("4. 주요 인력 및 조직", level=1)
+    # [수정] Processor의 새로운 키 Key_Personnel에 맞춤
+    kp = data.get("Key_Personnel") or {}
     
-    # 데이터 가져오기 (키 이름 주의)
-    org_data = data.get("Key_Personnel_and_Organization", {})
+    doc.add_heading("4-1. 대표이사 레퍼런스", level=2)
+    ceo = kp.get("CEO_Reference") or {}
+    doc.add_paragraph(f"■ 성명: {ceo.get('Name', '')}")
+    doc.add_paragraph(f"■ 학력 및 경력:\n{ceo.get('Background_and_Education', '')}")
+    doc.add_paragraph(f"■ 핵심 역량:\n{ceo.get('Core_Competency', '')}")
+    doc.add_paragraph(f"■ 경영 철학:\n{ceo.get('Management_Philosophy', '')}")
+    doc.add_paragraph(f"■ VC 관점 평가:\n{ceo.get('VC_Perspective_Evaluation', '')}")
 
-    # 4-1. 대표이사 및 핵심 인력 레퍼런스
-    doc.add_heading("4-1. 대표이사 및 핵심 인력 레퍼런스", level=2)
-
-    # (1) 대표이사 정성 평가 (VC 관점)
-    p_ceo = doc.add_paragraph()
-    p_ceo.add_run("■ 대표이사 정성 평가 (VC 관점 체크포인트)\n").bold = True
-    
-    ceo_assess = org_data.get("CEO_Qualitative_Assessment")
-    if not ceo_assess:
-        ceo_assess = "대표이사에 대한 상세 정성 평가 정보가 부족합니다. (경력, Exit 경험 등 확인 필요)"
-    doc.add_paragraph(ceo_assess)
-    
-    doc.add_paragraph("") # Spacer
-
-    # (2) 주요 맨파워 및 조직 역량
-    p_team = doc.add_paragraph()
-    p_team.add_run("■ 주요 맨파워 및 조직 역량\n").bold = True
-    
-    manpower = org_data.get("Key_Manpower_Capabilities")
-    if not manpower:
-        manpower = "핵심 인력(C-Level) 및 조직 구성에 대한 상세 정보가 부족합니다."
-    doc.add_paragraph(manpower)
+    doc.add_heading("4-2. 조직 역량", level=2)
+    team = kp.get("Team_Capability") or {}
+    doc.add_paragraph("■ 핵심 임원진:")
+    for ex in team.get("Key_Executives") or []: doc.add_paragraph(f"- {ex}")
+    doc.add_paragraph(f"■ 조직 강점:\n{team.get('Organization_Strengths', '')}")
+    doc.add_paragraph(f"■ 자문단:\n{team.get('Advisory_Board', '')}")
     
     doc.add_page_break()
 
@@ -614,30 +603,40 @@ def save_as_word_report(data, file_name, target_dir):
     # [변경됨] 2. 밸류에이션과 판단은 새로운 키 "Valuation_and_Judgment"에 묶여 있습니다.
     val_judge_data = data.get("Valuation_and_Judgment") or {}
 
-    # 5-2. Pre/Post-Money 밸류 추정
-    doc.add_heading("5-2. Pre/Post-Money 밸류 추정", level=2)
-    val_data = val_judge_data.get("Valuation_Table") or []
+    # 5-2. 밸류에이션 추정
+    doc.add_heading("5-2. 밸류에이션 추정 (Valuation Estimation)", level=2)
     
-    if val_data:
+    # 1. 밸류에이션 테이블 (기존)
+    val_table = val_judge_data.get("Valuation_Table") or []
+    if val_table:
         vt = doc.add_table(rows=1, cols=4)
         vt.style = "Table Grid"
-        headers = ["Round", "Pre-Money", "Post-Money", "Comment"]
-        for i, h in enumerate(headers):
-            vt.rows[0].cells[i].text = h
-            
-        try:
-            apply_table_style(vt)
-        except NameError:
-            pass
-            
-        for v in val_data:
-            row = vt.add_row().cells
-            row[0].text = str(v.get("Round") or "-")
-            row[1].text = str(v.get("Pre_Money") or "-")
-            row[2].text = str(v.get("Post_Money") or "-")
-            row[3].text = str(v.get("Comment") or "-")
+        vt.rows[0].cells[0].text = "Round"
+        vt.rows[0].cells[1].text = "Pre-Money"
+        vt.rows[0].cells[2].text = "Post-Money"
+        vt.rows[0].cells[3].text = "Comment"
+        apply_table_style(vt)
+        for v in val_table:
+            r = vt.add_row().cells
+            r[0].text = str(v.get("Round") or "-")
+            r[1].text = str(v.get("Pre_Money") or "-")
+            r[2].text = str(v.get("Post_Money") or "-")
+            r[3].text = str(v.get("Comment") or "-")
+    
+    # 2. 밸류에이션 산정 로직 (NEW - 상세 출력)
+    logic = val_judge_data.get("Valuation_Logic_Detail") or {}
+    if logic:
+        doc.add_paragraph("") # Spacer
+        p_logic = doc.add_paragraph()
+        p_logic.add_run("■ 밸류에이션 산정 로직 (Analyst Opinion)\n").bold = True
+        
+        peers = ", ".join(logic.get("Peer_Group") or [])
+        p_logic.add_run(f"• 비교 기업(Peer Group): {peers}\n")
+        p_logic.add_run(f"• 적용 지표: {logic.get('Applied_Multiple', '-')}\n")
+        p_logic.add_run(f"• 적용 이익: {logic.get('Target_Net_Income', '-')}\n")
+        p_logic.add_run(f"• 산출 근거:\n{logic.get('Calculation_Rationale', '-')}")
     else:
-        doc.add_paragraph("밸류에이션 추정 데이터가 확인되지 않았습니다.")
+        doc.add_paragraph("상세 밸류에이션 로직 데이터가 없습니다.")
 
     # 5-3. 종합 투자 판단 (VC/AC 시각)
     doc.add_heading("5-3. 종합 투자 판단 (VC/AC 시각)", level=2)
