@@ -12,6 +12,13 @@ output/
 output_report/
 report\(sample\)/
 debug_dump/
+*.zip
+*.exe
+*.txt
 
 # Debug / temporary files
 debug_*.json
+
+# Test
+test/
+test.txt
