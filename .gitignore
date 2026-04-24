@@ -22,3 +22,6 @@ debug_*.json
 # Test
 test/
 test.txt
+dart_raw_reports/
+archive_dart/
+corpCode_extracted/

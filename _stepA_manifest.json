@@ -1,0 +1,50 @@
+{
+  "generated_at": "2026-02-05 18:16:56",
+  "raw_root": "dart_raw_reports",
+  "items": [
+    {
+      "zip_path": "dart_raw_reports\\00126380\\20251114002447\\20251114002447.zip",
+      "file_count": 1,
+      "files": [
+        {
+          "name": "20251114002447.xml",
+          "ext": ".xml",
+          "size": 5037331,
+          "compress_size": 359290
+        }
+      ],
+      "candidates_top10": [
+        {
+          "name": "20251114002447.xml",
+          "ext": ".xml",
+          "size": 5037331,
+          "compress_size": 359290
+        }
+      ],
+      "corp_code": "00126380",
+      "rcept_no": "20251114002447"
+    },
+    {
+      "zip_path": "dart_raw_reports\\00164779\\20251114001805\\20251114001805.zip",
+      "file_count": 1,
+      "files": [
+        {
+          "name": "20251114001805.xml",
+          "ext": ".xml",
+          "size": 4856448,
+          "compress_size": 296838
+        }
+      ],
+      "candidates_top10": [
+        {
+          "name": "20251114001805.xml",
+          "ext": ".xml",
+          "size": 4856448,
+          "compress_size": 296838
+        }
+      ],
+      "corp_code": "00164779",
+      "rcept_no": "20251114001805"
+    }
+  ]
+}

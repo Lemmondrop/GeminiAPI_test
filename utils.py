@@ -5,6 +5,11 @@ import re
 import csv
 import base64
 import requests
+import random
+import io
+import pandas as pd
+import concurrent.futures
+import traceback # 에러 역추적용
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -39,49 +44,96 @@ def pdf_to_base64(pdf_path: str) -> dict:
     b64 = base64.b64encode(data).decode("utf-8")
     return {"inline_data": {"mime_type": "application/pdf", "data": b64}}
 
-def call_gemini(prompt: str, pdf_path: str = None, tools: list = None, max_tokens: int = 8192) -> dict:
-    if not api_key: raise RuntimeError("GEMINI_API_KEY is missing")
+# 🚨 [신규 추가] Pydantic의 $defs와 $ref를 Gemini REST API 규격에 맞게 쫙 펴주는 변환기
+def convert_to_gemini_schema(schema_node, defs=None):
+    if defs is None:
+        defs = schema_node.get("$defs", {})
+        
+    # $ref(참조)가 있으면 원본 딕셔너리로 교체
+    if "$ref" in schema_node:
+        ref_name = schema_node["$ref"].split("/")[-1]
+        return convert_to_gemini_schema(defs[ref_name], defs)
+        
+    # Optional 타입(anyOf) 처리
+    if "anyOf" in schema_node:
+        for sub in schema_node["anyOf"]:
+            if sub.get("type") != "null":
+                return convert_to_gemini_schema(sub, defs)
+        return {"type": "STRING"} 
+        
+    out = {}
+    t = schema_node.get("type", "OBJECT").upper()
+    out["type"] = t
     
+    if "description" in schema_node:
+        out["description"] = schema_node["description"]
+        
+    if t == "OBJECT" and "properties" in schema_node:
+        out["properties"] = {
+            k: convert_to_gemini_schema(v, defs) 
+            for k, v in schema_node["properties"].items()
+        }
+        if "required" in schema_node:
+            out["required"] = schema_node["required"]
+            
+    if t == "ARRAY" and "items" in schema_node:
+        out["items"] = convert_to_gemini_schema(schema_node["items"], defs)
+        
+    return out
+
+# 🚨 [핵심 수정] response_schema 파라미터를 추가하여 Pydantic 모델을 수용할 수 있게 만듭니다.
+def call_gemini(prompt: str, pdf_path: str = None, tools: list = None, response_schema=None, max_tokens: int = 8192) -> dict:
+    if not api_key: raise RuntimeError("GEMINI_API_KEY is missing")
     url = f"{API_BASE}/{TARGET_MODEL}:generateContent?key={api_key}"
+    
     parts = [{"text": prompt}]
     if pdf_path: parts.append(pdf_to_base64(pdf_path))
     
+    # 기본 Configuration
+    generation_config = {
+        "temperature": 0.1, 
+        "maxOutputTokens": max_tokens
+    }
+    
+    # 🚨 Pydantic 스키마가 전달된 경우, API 페이로드에 JSON Schema 형태로 변환하여 강제 주입합니다.
+    if response_schema:
+        generation_config["responseMimeType"] = "application/json"
+        raw_schema = response_schema.model_json_schema()
+        # 🚨 [핵심 수정] 제미나이가 못 읽는 $defs 에러를 원천 차단하기 위해 변환기 적용
+        generation_config["responseSchema"] = convert_to_gemini_schema(raw_schema)
+
     payload = {
-        "contents": [{"parts": parts}],
-        "generationConfig": {"temperature": 0.1, "maxOutputTokens": max_tokens}
+        "contents": [{"parts": parts}], 
+        "generationConfig": generation_config
     }
     if tools: payload["tools"] = tools
-
+    
     for _ in range(3):
         try:
             resp = requests.post(url, headers=HEADERS, json=payload, timeout=180)
             if resp.status_code == 200:
-                try:
+                try: 
                     return {"ok": True, "text": resp.json()["candidates"][0]["content"]["parts"][0]["text"]}
-                except:
+                except: 
                     return {"ok": False, "error": "Parsing Error"}
-            elif resp.status_code == 429:
+            elif resp.status_code == 429: 
                 time.sleep(5)
                 continue
-            else:
+            else: 
                 return {"ok": False, "error": resp.text}
-        except Exception as e:
+        except Exception as e: 
             time.sleep(3)
+            
     return {"ok": False, "error": "Timeout"}
 
 # =========================================================
-# 2. Local Data Loader (CSV) - Enhanced Debugging
+# 2. Industry Code Logic
 # =========================================================
 def load_industry_codes(csv_path: str):
-    """
-    [Step 1] preprocess_corp_code_list(prototype).csv 로드
-    - 역할: 산업내용(Industry Name)과 산업분류코드(Code)의 매핑 정보 로드
-    - [수정됨] '산업코드'보다 '산업분류코드'를 최우선으로 읽도록 강제
-    """
     if not os.path.exists(csv_path):
         print(f"⚠️ [Error] 산업코드 파일을 찾을 수 없습니다: {csv_path}")
         return {}
-
+    
     industry_map = {}
     encodings = ['utf-8-sig', 'cp949', 'euc-kr']
     
@@ -89,115 +141,194 @@ def load_industry_codes(csv_path: str):
         try:
             with open(csv_path, 'r', encoding=enc) as f:
                 reader = csv.DictReader(f)
-                
-                # 헤더 공백 제거
                 if reader.fieldnames:
                     reader.fieldnames = [h.strip() for h in reader.fieldnames]
-                    # print(f"   [Debug] Headers found: {reader.fieldnames}") # 디버깅용
-
-                # 1. '산업내용' 컬럼 찾기
+                    
                 name_col = next((c for c in reader.fieldnames if '산업내용' in c), None)
-                
-                # 2. '산업분류코드' 컬럼 찾기 (우선순위 적용)
-                # - '산업분류코드'가 포함된 컬럼이 있으면 무조건 그것을 씀
-                # - 없으면 Fallback으로 '산업코드'를 씀
                 code_col = None
                 priority_cols = [c for c in reader.fieldnames if '산업분류코드' in c]
-                if priority_cols:
-                    code_col = priority_cols[0]
-                else:
-                    code_col = next((c for c in reader.fieldnames if '산업코드' in c), None)
-
-                if not name_col or not code_col:
-                    continue
                 
-                # print(f"   [Debug] Selected Columns -> Name: {name_col}, Code: {code_col}")
-
+                if priority_cols: 
+                    code_col = priority_cols[0]
+                else: 
+                    code_col = next((c for c in reader.fieldnames if '산업코드' in c), None)
+                    
+                if not name_col or not code_col: 
+                    continue
+                    
                 for row in reader:
                     name = row.get(name_col, '').strip()
                     code = row.get(code_col, '').strip()
                     if name and code:
-                        industry_map[name] = code # Key: 산업내용 -> Value: 코드
-                
+                        if name not in industry_map:
+                            industry_map[name] = []
+                        if code not in industry_map[name]:
+                            industry_map[name].append(code)
+                            
                 if industry_map:
-                    print(f"   ✅ Industry Codes Loaded: {len(industry_map)} entries (Target Column: {code_col})")
+                    print(f"   ✅ Industry Codes Loaded: {len(industry_map)} unique industries")
                     break
-        except: continue
-        
+        except: 
+            continue
+            
     return industry_map
 
 def get_companies_by_code(target_code: str, csv_path: str):
-    """
-    [Step 2] company_cord_prototype.csv 로드 및 필터링
-    - target_code: 'C204' 또는 '204' 등
-    - 매칭 로직을 강화하여 문자/숫자 혼용 처리
-    """
-    if not os.path.exists(csv_path):
-        print(f"⚠️ [Error] 회사 리스트 파일을 찾을 수 없습니다: {csv_path}")
-        return []
-
+    if not os.path.exists(csv_path): return []
     matched_companies = []
     encodings = ['utf-8-sig', 'cp949', 'euc-kr']
-    
-    # 비교를 위해 타겟 코드에서 숫자만 추출할 수도 있음 (상황에 따라)
     target_clean = target_code.strip()
-
     for enc in encodings:
         try:
             with open(csv_path, 'r', encoding=enc) as f:
                 reader = csv.DictReader(f)
-                
                 if reader.fieldnames:
                     reader.fieldnames = [h.strip() for h in reader.fieldnames]
-                
                 code_col = next((c for c in reader.fieldnames if '산업분류코드' in c), None)
                 name_col = next((c for c in reader.fieldnames if '회사명' in c), None)
-
-                if not code_col or not name_col:
-                    continue
-
+                if not code_col or not name_col: continue
                 for row in reader:
                     row_code = row.get(code_col, '').strip()
                     row_name = row.get(name_col, '').strip()
-                    
                     if not row_code: continue
-
-                    # [매칭 로직]
-                    # 1. 완전 일치 (C20499 == C20499)
-                    # 2. 전방 일치 (C20499 startswith C204)
-                    # 3. 포함 관계 (C20499 contains 204)
-                    
-                    if row_code == target_clean:
-                        matched_companies.append(row_name)
-                    elif len(target_clean) >= 3 and row_code.startswith(target_clean):
-                        matched_companies.append(row_name)
-                    # 혹시 target이 '204'이고 row가 'C20499'인 경우 처리
-                    elif len(target_clean) >= 3 and target_clean in row_code:
-                        matched_companies.append(row_name)
-
+                    if row_code == target_clean: matched_companies.append(row_name)
+                    elif len(target_clean) >= 3 and row_code.startswith(target_clean): matched_companies.append(row_name)
+                    elif len(target_clean) >= 3 and target_clean in row_code: matched_companies.append(row_name)
                 if matched_companies:
                     matched_companies = list(set(matched_companies))
-                    print(f"   ✅ Found {len(matched_companies)} companies matching code '{target_clean}'")
                     break
         except: continue
-
     return matched_companies
 
-def find_peers_by_standard_code(standard_code, company_list):
-    """
-    표준 코드(예: 259)를 사용하여 상장사 코드(예: C00259)를 가진 기업들을 찾음
-    Logic: 상장사 코드의 숫자 부분이 표준 코드를 포함하거나 일치하는지 확인
-    """
-    peers = []
-    target_num = re.sub(r'\D', '', str(standard_code)) # 숫자만 추출 (259)
+# =========================================================
+# 3. Financial Filtering Engine (Debug Mode)
+# =========================================================
+def get_random_ua():
+    uas = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36'
+    ]
+    return random.choice(uas)
+
+def check_net_income(company_info):
+    name = company_info['name']
+    code = company_info['code'] 
     
-    for comp in company_list:
-        comp_code_num = re.sub(r'\D', '', comp['code']) # C00259 -> 00259
+    time.sleep(random.uniform(0.5, 1.0))
+    url = f"https://finance.naver.com/item/main.naver?code={code}"
+    
+    try:
+        headers = {'User-Agent': get_random_ua(), 'Referer': 'https://finance.naver.com/'}
+        res = requests.get(url, headers=headers, timeout=10)
         
-        # 매칭 로직:
-        # 1. 표준 코드가 상장사 코드의 뒷부분과 일치 (예: 259 vs 00259 -> match)
-        # 2. 또는 상장사 코드가 표준 코드를 포함 (유연한 매칭)
-        if comp_code_num.endswith(target_num) or (len(target_num) >= 3 and target_num in comp_code_num):
-            peers.append(comp['name'])
+        if res.status_code != 200:
+            return (name, False, f"HTTP Error {res.status_code}")
+
+        if len(res.text) < 1000:
+            return (name, False, f"HTML 내용 너무 짧음 ({len(res.text)} bytes) - 차단 의심")
+
+        try:
+            dfs = pd.read_html(io.StringIO(res.text), attrs={"class": "tb_type1"}, match="매출액")
+            if not dfs: 
+                return (name, False, "재무 테이블(tb_type1) 없음")
             
-    return list(set(peers)) # 중복 제거
+            fin_df = dfs[0]
+            cols = [str(c).replace(" ", "").replace("'", "").replace("(", "").replace(")", "").replace("\n", "") for c in fin_df.columns]
+
+            target_idx = -1
+            for i, c in enumerate(cols):
+                if '2024.12' in c and 'E' not in c:
+                    target_idx = i
+                    break
+            if target_idx == -1:
+                for i, c in enumerate(cols):
+                    if '2024.12' in c:
+                        target_idx = i
+                        break
+            
+            if target_idx == -1:
+                return (name, False, f"2024년 컬럼 없음. 발견된 최근 컬럼: {cols[-3:]}")
+
+            ni_idx = -1
+            for idx, row in fin_df.iterrows():
+                label = str(row.iloc[0]).replace(" ", "").strip()
+                if '당기순이익(지배)' in label:
+                    ni_idx = idx
+                    break
+                elif label == '당기순이익' and ni_idx == -1:
+                    ni_idx = idx
+
+            if ni_idx == -1:
+                return (name, False, "당기순이익 행 없음")
+
+            val_raw = fin_df.iloc[ni_idx, target_idx]
+            
+            def parse_val(v):
+                s = str(v).strip()
+                if s in ['-', 'nan', '', 'N/A']: return -999999
+                try: return float(s.replace(',', ''))
+                except: return -999999
+
+            ni_val = parse_val(val_raw)
+
+            if ni_val > 0:
+                return (name, True, f"흑자 ({ni_val})")
+            else:
+                return (name, False, f"적자 ({ni_val})")
+
+        except Exception as e:
+            return (name, False, f"파싱 에러: {str(e)[:50]}")
+
+    except Exception as e:
+        return (name, False, f"접속 에러: {str(e)}")
+
+def filter_peers_stage2(peer_names, company_csv_path):
+    print(f"   📊 [Step 4~8] 재무 정밀 필터링 시작 (Input: {len(peer_names)}개 사)")
+    
+    dec_candidates = []
+    dec_candidate_objs = []
+    seen_codes = set()
+    
+    try:
+        encodings = ['utf-8-sig', 'cp949', 'euc-kr']
+        for enc in encodings:
+            try:
+                with open(company_csv_path, 'r', encoding=enc) as f:
+                    reader = csv.DictReader(f)
+                    if reader.fieldnames: reader.fieldnames = [h.strip() for h in reader.fieldnames]
+                    for row in reader:
+                        name = row.get('회사명', '').strip()
+                        month = row.get('결산월', '').strip()
+                        raw_code = row.get('종목코드', '').strip()
+                        if name in peer_names:
+                            if '12' in month and raw_code:
+                                clean_code = raw_code.zfill(6)
+                                if clean_code not in seen_codes:
+                                    dec_candidates.append(name)
+                                    dec_candidate_objs.append({'name': name, 'code': clean_code})
+                                    seen_codes.add(clean_code)
+                    if dec_candidates: break
+            except: continue
+    except: 
+        return {"dec_passed": peer_names, "profit_passed": peer_names}
+
+    print(f"      👉 12월 결산 & 코드 정제 완료: {len(dec_candidates)}개 사")
+    if not dec_candidates: 
+        return {"dec_passed": [], "profit_passed": []}
+
+    print("      👉 당기순이익(지배) 흑자 여부 조회 중...")
+    
+    profit_passed = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        results = list(executor.map(check_net_income, dec_candidate_objs))
+    
+    for name, passed, reason in results:
+        if passed:
+            profit_passed.append(name)
+    
+    print(f"      👉 최종 통과: {len(profit_passed)}개 사")
+    
+    return {
+        "dec_passed": dec_candidates,
+        "profit_passed": profit_passed
+    }
