@@ -1,0 +1,35 @@
+{
+  "case": {
+    "name": "뉴클럭스 (NUCLUX.AI)",
+    "seed_code": "59111",
+    "business_text": "AI 및 생성형 AI 기술 기반 엔터테인먼트·영상 콘텐츠 제작사. 영상 제작 전주기(Pre-Production~Production~Post-Production)에 AI를 통합 적용하여 가상배우 생성, 자동 시나리오 생성, AI VFX, 음성합성, 자동편집을 수행. 할리우드 및 글로벌 스튜디오와 공동제작/CGI 스튜디오 투자, 리마스터링 라이브러리 사업도 영위. 2025년 5월 설립.",
+    "track_type": "general",
+    "high_sim_exempt": true,
+    "headline": "sim_weighted",
+    "note": "IR출처: NUCLUX_IR_072025.pdf | 업종: 영화/영상/AI VFX 제작 (비상장, 설립 1년 미만, Seed+Angel 단계, KOSDAQ 피어 유니버스 외 비교회사). KSIC 추정코드 59111(영화 및 비디오물 제작업) 적용, 실제 DART 검증 필요. ⚠ 설립 1년 미만 — Stage 2 재무 적격성(흑자 요건) 자체가 무의미할 수 있음, 재무통과 0 또는 매우 적은 모집단이 나올 가능성 높음."
+  },
+  "elapsed_sec": 1.6,
+  "funnel": {
+    "pool": 207,
+    "stage2": 82,
+    "stage3": 8,
+    "final": 1
+  },
+  "final_peers": [
+    {
+      "name": "아티스트컴퍼니",
+      "종목코드": "321820",
+      "tier": "중간",
+      "sim_score": 65,
+      "per": 34.0,
+      "rationale": "발행사는 AI 및 생성형 AI 기술 기반의 영상 콘텐츠 제작에 특화된 반면, 후보기업은 전통적인 콘텐츠 제작 및 배급 사업을 영위하며 연예 매니지먼트, 애드테크 등 다양한 사업을 포함하여 핵심 사업 모델의 유사성이 중간 수준이다."
+    }
+  ],
+  "headline": {
+    "method": "sim_weighted",
+    "value": 34.02,
+    "detail": "중앙값 34.02 / 평균 34.02 / 유사도가중 34.02 / 범위 34.02~34.02, n=1"
+  },
+  "no_peers": false,
+  "stage3_candidates_only": []
+}

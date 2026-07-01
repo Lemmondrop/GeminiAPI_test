@@ -1,0 +1,35 @@
+{
+  "case": {
+    "name": "주식회사 피엔피 (PNP)",
+    "seed_code": "29173",
+    "business_text": "반도체 및 FPD(Flat Panel Display) 제조용 장비 전문기업. Edge Grinder, Scratch Inspection, Edge Polishing, Shape Grinder, Side Sealing, Sheet Lamination, Glass Detaching 등 OLED/Foldable UTG 공정설비 제조. 반도체 Handler, SND 조립기 및 연마 Tool, Picker Pad 등 Parts Biz 영위. Rigid/Foldable/Flexible OLED 전 공정 대응 가능한 토탈 솔루션 보유.",
+    "track_type": "general",
+    "high_sim_exempt": false,
+    "headline": "sim_weighted",
+    "note": "IR 출처: ㈜피엔피 Company Profile(230427). 업종(추정): 29173 반도체 제조용 기계 제조업 — KSIC 가매핑, 실제 사업자등록 기준 세세분류 확인 필요. 비상장 중소기업, 설립 2012년, 자본금 10억원, 23.04 기준 종업원 74명."
+  },
+  "elapsed_sec": 1.5,
+  "funnel": {
+    "pool": 376,
+    "stage2": 208,
+    "stage3": 29,
+    "final": 1
+  },
+  "final_peers": [
+    {
+      "name": "엘에이티",
+      "종목코드": "311060",
+      "tier": "높음",
+      "sim_score": 90,
+      "per": 57.2,
+      "rationale": "두 기업 모두 반도체 및 OLED 제조 공정에 필수적인 장비를 공급하며, 주요 고객과 밸류체인 단계가 동일합니다. 비록 세부 장비 종류는 다르지만, 핵심 사업 영역과 전방산업이 매우 유사합니다."
+    }
+  ],
+  "headline": {
+    "method": "sim_weighted",
+    "value": 57.2,
+    "detail": "중앙값 57.2 / 평균 57.2 / 유사도가중 57.2 / 범위 57.2~57.2, n=1"
+  },
+  "no_peers": false,
+  "stage3_candidates_only": []
+}

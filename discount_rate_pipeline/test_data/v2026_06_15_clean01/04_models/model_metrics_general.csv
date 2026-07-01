@@ -1,0 +1,2 @@
+﻿input_csv,n_train,n_features,n_segment_features,n_dropped_constant_features,cv_rmse_mean,cv_rmse_std,cv_mae_mean,cv_mae_std,cv_r2_mean,cv_r2_std,baseline_rmse,improvement_pct
+test_data\v2026_06_15_clean01\03_training\training_features_expanded_general.csv,135,35,12,2,7.4574,0.8756,5.973,0.8583,-0.0125,0.0961,7.5605,1.3634

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "센스톤",
+    "track": "general",
+    "pool": 356,
+    "stage2": 188,
+    "stage3": 20,
+    "final": 8,
+    "headline_per": 33.03,
+    "elapsed_sec": 1.7
+  },
+  {
+    "name": "주식회사 피엔피 (PNP)",
+    "track": "general",
+    "pool": 376,
+    "stage2": 208,
+    "stage3": 29,
+    "final": 1,
+    "headline_per": 57.2,
+    "elapsed_sec": 1.5
+  },
+  {
+    "name": "주식회사 케이더블유씨 (KWC)",
+    "track": "general",
+    "pool": 207,
+    "stage2": 109,
+    "stage3": 9,
+    "final": 3,
+    "headline_per": 12.91,
+    "elapsed_sec": 1.4
+  },
+  {
+    "name": "뉴클럭스 (NUCLUX.AI)",
+    "track": "general",
+    "pool": 207,
+    "stage2": 82,
+    "stage3": 8,
+    "final": 1,
+    "headline_per": 34.02,
+    "elapsed_sec": 1.6
+  },
+  {
+    "name": "스쿼드엑스 (SQUADX)",
+    "track": "general",
+    "pool": 250,
+    "stage2": 130,
+    "stage3": 5,
+    "final": 2,
+    "headline_per": 28.48,
+    "elapsed_sec": 1.5
+  }
+]

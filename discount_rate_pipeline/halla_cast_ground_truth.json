@@ -1,0 +1,37 @@
+{
+  "_comment": "한라캐스트 IPO 자료 (사용자 공유) - 추출 정확도 검증용 ground truth",
+  "_source": "사용자 공유 이미지 (DART Page 203~)",
+  "company_name": "(주)한라캐스트",
+  "submission_date_estimate": "2025-Q2",
+  "valuation": {
+    "applied_net_income_million_won": 9910,
+    "applied_shares_total": 36526017,
+    "applied_eps_won": 271.31,
+    "applied_per": 25.93,
+    "intrinsic_value_per_share_won": 7033
+  },
+  "shares_breakdown": {
+    "issued_shares_total": 28829939,
+    "public_offering_shares": 7500000,
+    "mandatory_subscription": 196078,
+    "applied_total": 36526017
+  },
+  "net_income_adjustments": {
+    "fy2024_net_income_million": 10298,
+    "fy2024_1q_million": 4574,
+    "fy2025_1q_million": 1351,
+    "cb_rcps_fy2024_million": 775,
+    "cb_rcps_fy2024_1q_million": 1899,
+    "cb_rcps_fy2025_1q_million": -1711,
+    "calculation": "A - B + C - D + E - F = 10298 - 4574 + 1351 - 775 + 1899 - (-1711) = 9910"
+  },
+  "offering_band": {
+    "discount_rate_low_pct": 17.54,
+    "discount_rate_high_pct": 27.49,
+    "discount_rate_mid_pct": 22.515,
+    "offering_band_low_won": 5100,
+    "offering_band_high_won": 5800,
+    "final_offering_price_won": null
+  },
+  "discount_rate_justification": "2023년 이후 코스닥시장에 신규상장한 일반트랙기업의 희망공모가액 산출을 위하여 적용한 할인율 등을 종합적으로 고려"
+}

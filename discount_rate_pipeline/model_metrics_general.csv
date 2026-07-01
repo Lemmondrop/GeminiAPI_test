@@ -1,0 +1,2 @@
+﻿input_csv,n_train,n_features,n_segment_features,n_dropped_constant_features,cv_rmse_mean,cv_rmse_std,cv_mae_mean,cv_mae_std,cv_r2_mean,cv_r2_std,baseline_rmse,improvement_pct
+training_features_general.csv,110,35,12,2,6.9994,0.8141,5.65,0.6379,0.0861,0.2032,7.5427,7.2038

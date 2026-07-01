@@ -134,6 +134,10 @@ def main():
         print(f">>> [{i+1}/{len(company_data_map)}] '{company_name}' 분석 시작")
         print(f"==================================================")
 
+        if os.path.exists(json_path):
+            print(f"   ⏭️ [Skip] 이미 처리된 기업입니다. (결과 파일 존재: {json_path})\n")
+            continue
+
         try:
             # 1. 메인 PDF 추출
             ir_pdfs = [f for f in files.get("IR", []) if f.lower().endswith('.pdf')]

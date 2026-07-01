@@ -1,0 +1,43 @@
+{
+  "case": {
+    "name": "스쿼드엑스 (SQUADX)",
+    "seed_code": "63999",
+    "business_text": "Content x Tech 융합 AI 자동화 영상 마케팅 솔루션 기업. B2B 미디어커머스 SaaS(BrixPlus), AI 숏폼 영상 생성(Xclip), AI 매체믹스 디지털 마케팅(BrixAds), AI 코어 통합관리(BrixAI) 4대 솔루션 운영. 라이브커머스/숏폼커머스 SaaS로 출발해 AI 콘텐츠 제작 및 디지털 마케팅으로 사업 확장. 2022년 설립, 140개 이상 고객사(롯데, 아모레, LG유플러스 등) 보유, 2025년 매출 46.3억원(YoY 317%), 싱가포르 법인 설립.",
+    "track_type": "general",
+    "high_sim_exempt": true,
+    "headline": "sim_weighted",
+    "note": "IR출처: 스쿼드엑스_Investor_Relations_260408.pdf | 업종: AI 마케팅테크/광고솔루션 SaaS(비상장, Series A 단계, KOSDAQ 피어 유니버스 외 비교회사). KSIC 추정코드 63999(그 외 기타 정보서비스업, 광고대행/디지털마케팅 플랫폼) 적용, 실제 DART 검증 필요."
+  },
+  "elapsed_sec": 1.5,
+  "funnel": {
+    "pool": 250,
+    "stage2": 130,
+    "stage3": 5,
+    "final": 2
+  },
+  "final_peers": [
+    {
+      "name": "아티스트컴퍼니",
+      "종목코드": "321820",
+      "tier": "중간",
+      "sim_score": 65,
+      "per": 34.0,
+      "rationale": "후보기업의 애드테크 플랫폼 사업은 발행사의 AI 자동화 영상 마케팅 및 디지털 마케팅 솔루션과 전방산업 및 밸류체인 단계에서 유사성이 높습니다. 그러나 후보기업은 연예 매니지먼트 등 발행사와 무관한 사업 비중이 크고, 발행사의 AI 및 영상 특화 솔루션과의 직접적인 경쟁 관계는 일부에 한정됩니다."
+    },
+    {
+      "name": "브리지텍",
+      "종목코드": "064480",
+      "tier": "중간",
+      "sim_score": 45,
+      "per": 20.5,
+      "rationale": "두 기업 모두 AI 기술 기반의 B2B SaaS 솔루션을 제공하며 유사한 수익 모델을 가지지만, 발행사는 영상 마케팅 및 미디어 커머스에, 후보기업은 컨택센터 및 고객 응대에 AI를 적용하여 핵심 사업 영역과 고객사의 주요 니즈가 상이합니다."
+    }
+  ],
+  "headline": {
+    "method": "sim_weighted",
+    "value": 28.48,
+    "detail": "중앙값 27.25 / 평균 27.25 / 유사도가중 28.48 / 범위 20.48~34.02, n=2"
+  },
+  "no_peers": false,
+  "stage3_candidates_only": []
+}

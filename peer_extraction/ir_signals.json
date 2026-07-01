@@ -1,0 +1,63 @@
+{
+  "_설명": "각 키는 poc_results/{키}.json 의 파일명(확장자 제외)과 정확히 일치해야 합니다. 트랙(IPO/다음라운드) 판단은 stage_router가 자동으로 하니, 여기엔 IR에서 읽은 '원재료' 값만 채우면 됩니다. 값을 모르면 null로 두세요 — 자동판별기가 review_needed로 표시해줍니다.",
+  "센스톤": {
+    "founding_year": 2015,
+    "latest_round": "Pre-IPO",
+    "ipo_mentioned": true,
+    "ipo_target_year": 2027,
+    "net_income": null,
+    "future_net_income": 152.3,
+    "ni_year": 2027,
+    "revenue": null,
+    "yoy_growth": 0.0,
+    "segment": "software"
+  },
+  "스쿼드엑스 (SQUADX)": {
+    "founding_year": 2022,
+    "latest_round": "Series Pre-A",
+    "ipo_mentioned": true,
+    "ipo_target_year": 2030,
+    "net_income": null,
+    "future_net_income": null,
+    "ni_year": null,
+    "revenue": 46.3,
+    "segment": "ai",
+    "yoy_growth": 0.0
+  },
+  "뉴클럭스 (NUCLUX.AI)": {
+    "founding_year": 2025,
+    "latest_round": "Seed + Angel",
+    "ipo_mentioned": false,
+    "ipo_target_year": null,
+    "net_income": null,
+    "future_net_income": null,
+    "ni_year": null,
+    "revenue": 90.0,
+    "segment": "ai",
+    "yoy_growth": 0.0
+  },
+  "주식회사 케이더블유씨 (KWC)": {
+    "founding_year": 1990,
+    "latest_round": null,
+    "ipo_mentioned": true,
+    "ipo_target_year": 2028,
+    "net_income": -27.0,
+    "future_net_income": 27.7,
+    "ni_year": 2027,
+    "revenue": 131.32,
+    "segment": "materials",
+    "yoy_growth": 0.0
+  },
+  "주식회사 피엔피 (PNP)": {
+    "founding_year": 2011,
+    "latest_round": null,
+    "ipo_mentioned": false,
+    "ipo_target_year": null,
+    "net_income": null,
+    "future_net_income": null,
+    "ni_year": null,
+    "revenue": 130.45,
+    "segment": "semiconductor",
+    "yoy_growth": 0.0
+  }
+}

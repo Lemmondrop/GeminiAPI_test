@@ -1,0 +1,159 @@
+{
+  "version": "v2026_06_15_expanded_current",
+  "created_at": "2026-06-15T19:06:46",
+  "root": "test_data/v2026_06_15_expanded_current",
+  "files": [
+    {
+      "group": "01_raw",
+      "source": "peer_group_discount_rates.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/01_raw/peer_group_discount_rates.csv",
+      "bytes": 24530,
+      "sha256": "1d47fdcbc65d673b05589935032d8f858fc5be0c7d4b9e4a8c742716d37101ff",
+      "rows": 200
+    },
+    {
+      "group": "01_raw",
+      "source": "discount_rate_table_pages_check.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/01_raw/discount_rate_table_pages_check.csv",
+      "bytes": 39871,
+      "sha256": "7c5da2c5a8a8f3ce4eeb9d20e579cd7efdc6c6580f33d50f135946d827eb8304",
+      "rows": 352
+    },
+    {
+      "group": "01_raw",
+      "source": "peer_group_discount_rates_expanded.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/01_raw/peer_group_discount_rates_expanded.csv",
+      "bytes": 29896,
+      "sha256": "2e70ed5e3067b4252b344bc8f29f962a7662a43313640d27668a325c5cce8788",
+      "rows": 247
+    },
+    {
+      "group": "02_phase_outputs",
+      "source": "peer_group_expanded_with_corp_code.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/02_phase_outputs/peer_group_expanded_with_corp_code.csv",
+      "bytes": 22928,
+      "sha256": "c041f389bc2a7bf198d22befb9f3595dec86150da93b889b1e3dd2540414d72d",
+      "rows": 247
+    },
+    {
+      "group": "02_phase_outputs",
+      "source": "peer_group_expanded_with_rcpno.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/02_phase_outputs/peer_group_expanded_with_rcpno.csv",
+      "bytes": 57368,
+      "sha256": "d684377915355dd2933b2e7171603607a517cb4bf853bc4e5e4eb6268ce09cdb",
+      "rows": 247
+    },
+    {
+      "group": "02_phase_outputs",
+      "source": "peer_group_expanded_features_raw.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/02_phase_outputs/peer_group_expanded_features_raw.csv",
+      "bytes": 66609,
+      "sha256": "e0fc292452a68c5e52fe8181d5e587fa7a71e958d1717fd004397f906039bc6f",
+      "rows": 247
+    },
+    {
+      "group": "02_phase_outputs",
+      "source": "peer_group_expanded_features_enriched.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/02_phase_outputs/peer_group_expanded_features_enriched.csv",
+      "bytes": 72566,
+      "sha256": "98ab6580ffd476e02f7da4e99009be1fc850b3bcb3a97b75fd71faca5ffef07e",
+      "rows": 247
+    },
+    {
+      "group": "03_training",
+      "source": "training_features_expanded.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/03_training/training_features_expanded.csv",
+      "bytes": 68117,
+      "sha256": "358defc2cf110a6a67906f153843aab33c1a138307b550d83a425f720e81e461",
+      "rows": 197
+    },
+    {
+      "group": "03_training",
+      "source": "training_features_expanded_segmented.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/03_training/training_features_expanded_segmented.csv",
+      "bytes": 198295,
+      "sha256": "4eaef417e61c1cfb0644441947e3c24be229bcf193db199f99180e8261b53d82",
+      "rows": 197
+    },
+    {
+      "group": "03_training",
+      "source": "training_features_expanded_general.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/03_training/training_features_expanded_general.csv",
+      "bytes": 133434,
+      "sha256": "2e258ecf19acd6af347ac37ee203b92d582085640fb8d25532e93f82a41b31ed",
+      "rows": 138
+    },
+    {
+      "group": "03_training",
+      "source": "training_features_expanded_general_excluded.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/03_training/training_features_expanded_general_excluded.csv",
+      "bytes": 63475,
+      "sha256": "9d94524d658aab48a2be65c57ef51720f878a5be9cf5d6ce636ff8a395afc243",
+      "rows": 59
+    },
+    {
+      "group": "04_models",
+      "source": "model_general_expanded.pkl",
+      "dest": "test_data/v2026_06_15_expanded_current/04_models/model_general_expanded.pkl",
+      "bytes": 137948,
+      "sha256": "0a40dc0f00bcfa14a05b42f3bb1168a5dfd104945c542ec6899a4c6f03eb5158",
+      "rows": null
+    },
+    {
+      "group": "04_models",
+      "source": "model_input_limited_expanded.pkl",
+      "dest": "test_data/v2026_06_15_expanded_current/04_models/model_input_limited_expanded.pkl",
+      "bytes": 137379,
+      "sha256": "829846b861e56383eccc189f356617b2e88d3f9037c01ad0720ffb5d93e8a3a1",
+      "rows": null
+    },
+    {
+      "group": "04_models",
+      "source": "feature_importance_general_expanded.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/04_models/feature_importance_general_expanded.csv",
+      "bytes": 1029,
+      "sha256": "ab6a8312dd2c344a2acba9f328ddd9b45bea4015c3d202347bdb252cfabb1c9e",
+      "rows": 35
+    },
+    {
+      "group": "04_models",
+      "source": "feature_importance_input_limited_expanded.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/04_models/feature_importance_input_limited_expanded.csv",
+      "bytes": 1186,
+      "sha256": "2bc3b642ebb476036cd23b90fd6a55be010174c04a35230c8fbfaa122a118e3d",
+      "rows": 38
+    },
+    {
+      "group": "04_models",
+      "source": "predictions_cv_general_expanded.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/04_models/predictions_cv_general_expanded.csv",
+      "bytes": 13889,
+      "sha256": "2dca42ec3f1fdb7ba11b131a1965677474fc164d8ff88bac5d1e5a85ba2bf128",
+      "rows": 138
+    },
+    {
+      "group": "04_models",
+      "source": "predictions_cv_input_limited_expanded.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/04_models/predictions_cv_input_limited_expanded.csv",
+      "bytes": 15922,
+      "sha256": "d948e65a11bd5771386de5c99115bf515bf22eade83b63dfdd85c823cd411e57",
+      "rows": 138
+    },
+    {
+      "group": "04_models",
+      "source": "model_metrics_general_expanded.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/04_models/model_metrics_general_expanded.csv",
+      "bytes": 289,
+      "sha256": "9ac35effa4f510c9b8199ceca7c5447e80106c088e3fdedfc44259036fa4e9a9",
+      "rows": 1
+    },
+    {
+      "group": "04_models",
+      "source": "model_metrics_input_limited_expanded.csv",
+      "dest": "test_data/v2026_06_15_expanded_current/04_models/model_metrics_input_limited_expanded.csv",
+      "bytes": 318,
+      "sha256": "bf014ca03e4d81be7c3877cd3e3ae33f07fd147086d762d39af44324e605a1d2",
+      "rows": 1
+    }
+  ]
+}

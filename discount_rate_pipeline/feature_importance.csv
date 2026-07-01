@@ -1,0 +1,10 @@
+﻿feature,importance,importance_pct
+log_per_stock,0.1689,16.8935
+price_band_low,0.1423,14.2312
+price_band_high,0.1347,13.4727
+price_vs_mid,0.1256,12.5648
+log_offering,0.1113,11.1306
+year,0.1075,10.7457
+band_width_pct,0.1074,10.7358
+month,0.1023,10.2258
+is_konex,0.0,0.0
