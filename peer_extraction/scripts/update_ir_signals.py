@@ -40,7 +40,15 @@ IR_SIGNALS_PATH = ROOT_DIR / "ir_signals.json"
 # company_name/_extraction_notes처럼 감사용 필드도 섞여 있으므로 분리.
 SIGNAL_FIELDS = ("founding_year", "latest_round", "ipo_mentioned", "ipo_target_year",
                  "net_income", "future_net_income", "ni_year", "revenue",
+                 "net_income_projections", "revenue_projections",
                  "segment", "yoy_growth")
+
+# --override는 단일값 필드만 대상으로 한다 — 다년도 dict 필드를 커맨드라인에서
+# 손으로 고치는 건 셸 인용 문제만 키우므로(이번 세션에서 실제로 겪은 문제),
+# 다년도 값을 고치고 싶으면 ir_signals.json을 직접 편집하는 게 더 안전하다.
+_OVERRIDABLE_FIELDS = ("founding_year", "latest_round", "ipo_mentioned", "ipo_target_year",
+                       "net_income", "future_net_income", "ni_year", "revenue",
+                       "segment", "yoy_growth")
 
 
 def load_ir_signals() -> dict:
@@ -62,8 +70,15 @@ def print_review(case: str, extracted: dict):
     print(f"  문서상 회사명: {extracted.get('company_name') or '(추출 안 됨)'}")
     for f in SIGNAL_FIELDS:
         v = extracted.get(f)
+        if f in ("net_income_projections", "revenue_projections"):
+            if v:
+                years_str = ", ".join(f"{y}E={amt:g}억" for y, amt in sorted(v.items()))
+                print(f"  {f:<24}: {years_str}  ({len(v)}개년)")
+            else:
+                print(f"  {f:<24}: None  ⚠ null (다년도 추정 표를 못 찾았거나 문서에 없음)")
+            continue
         flag = "  ⚠ null" if v is None else ""
-        print(f"  {f:<18}: {v}{flag}")
+        print(f"  {f:<24}: {v}{flag}")
     notes = extracted.get("_extraction_notes")
     if notes:
         print(f"  메모: {notes}")
@@ -100,8 +115,11 @@ def main():
         if "=" not in kv:
             sys.exit(f"[ERROR] --override는 key=value 형태여야 합니다: {kv!r}")
         k, v = kv.split("=", 1)
-        if k not in SIGNAL_FIELDS:
-            sys.exit(f"[ERROR] 알 수 없는 필드: {k!r} (허용: {SIGNAL_FIELDS})")
+        if k not in _OVERRIDABLE_FIELDS:
+            if k in ("net_income_projections", "revenue_projections"):
+                sys.exit(f"[ERROR] {k!r}는 다년도 dict 필드라 --override로 못 고칩니다. "
+                         f"ir_signals.json을 직접 편집하세요.")
+            sys.exit(f"[ERROR] 알 수 없는 필드: {k!r} (허용: {_OVERRIDABLE_FIELDS})")
         # 최소한의 타입 추정 — 문자열 그대로 두면 안 되는 필드만 캐스팅
         if k in ("founding_year", "ipo_target_year", "ni_year"):
             v = int(v)

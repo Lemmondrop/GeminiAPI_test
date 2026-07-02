@@ -1,31 +1,15 @@
 """PER 기반 평가가액 산출 — 신고서 표준 방법(미래 추정순이익 현가화 × 피어 PER).
-
-적자/초기기업은 현재 PER 평가 불가 → 미래 추정순이익을 현재가치로 할인한
-'적용 순이익'에 피어 대표 PER을 곱해 평가 시가총액(equity value) 산출.
-(이지트로닉스 신고서 방식: 적용순이익 C = 추정순이익 A / (1+할인율)^n, 평가액 = C × 적용PER)
-
-대표 PER 산출 방식을 여러 가지 제공 — 유사도 반영 여부가 평가액을 크게 좌우.
+(실제 라이브 core/valuation.py 그대로 복사 — 검증용)
 """
 from __future__ import annotations
-
 from statistics import median, mean
 
 
 def present_value(future_ni: float, discount_rate: float, years: float) -> float:
-    """미래 추정순이익 → 현재가치(적용 순이익). C = A / (1+r)^n."""
     return future_ni / ((1.0 + discount_rate) ** years)
 
 
 def representative_per(peers: list[dict], method: str = "median") -> float:
-    """피어 PER들의 대표값. peers: [{name, per, similarity(0~100), tier}].
-
-    method:
-      median        - 전체 중앙값 (현행 기본; 이상치에 강건)
-      mean          - 전체 평균
-      sim_weighted  - 유사도 가중평균 (유사할수록 PER 비중↑)
-      high_only     - '높음' tier만 평균 (가장 유사한 피어만)
-      high_median   - '높음' tier만 중앙값
-    """
     pers = [p["per"] for p in peers if p.get("per") is not None]
     if not pers:
         return 0.0
@@ -47,13 +31,11 @@ def representative_per(peers: list[dict], method: str = "median") -> float:
 
 
 def equity_value(applied_ni: float, per: float) -> float:
-    """평가 시가총액 = 적용 순이익 × 대표 PER."""
     return applied_ni * per
 
 
 def valuation_scenarios(peers: list[dict], future_ni: float,
                         discount_rate: float, years: float) -> dict:
-    """여러 대표 PER 방식별 평가액 시나리오. 금액 단위는 future_ni와 동일."""
     applied = present_value(future_ni, discount_rate, years)
     out = {"applied_ni": applied, "future_ni": future_ni,
            "discount_rate": discount_rate, "years": years, "scenarios": {}}
@@ -63,42 +45,70 @@ def valuation_scenarios(peers: list[dict], future_ni: float,
     return out
 
 
-# -------------------- 주당 평가가액 → 희망 공모가액 밴드 (신고서 형식) --------------------
-def per_share_value(equity_value: float, shares: float) -> float:
-    """주당 평가가액 = 평가시총 / 공모후 발행주식수. 단위: equity_value와 동일/주."""
-    return equity_value / shares if shares else 0.0
+# ══════════════════════════════════════════════════════════════
+# 다년도 추정치 기반 현재가치 밴드 (2026-07 설계)
+#
+# 배경: 스타트업은 상장사와 달리 "지금 안정적인 실적"이 가치의 근거가 아니라,
+# "매출/이익이 성장하는 궤적"이 가치의 근거다. "3년 뒤 목표를 달성하면 지금
+# 얼마짜리인가"를 보여주는 게 핵심이라, 단일 성장률로 미래를 외삽하는 대신
+# 플랫폼의 "추정 재무제표 입력" 화면(연도별 매출/영업이익/당기순이익)을 그대로
+# 받아 연도별로 각각 현재가치화해서 밴드로 제시한다.
+#
+# 할인율 스케줄: 다음해 15% / 2년뒤 20% / 3년뒤 30% (2026-07 확정).
+# 연차가 멀수록 요율이 커지는 건 예측 신뢰도가 떨어진다는 뜻 — 초기 연차는
+# 예측이 비교적 믿을만하지만 멀어질수록 불확실성이 커진다는 철학을 반영.
+# 복리 방식은 "해당 연차 요율로 단순 거듭제곱"(연차마다 다른 요율을 순차
+# 복리하는 방식이 아님) — 2026-07 확정. 예: 3년 뒤 값은 (1+30%)^3로 나눔.
+# ══════════════════════════════════════════════════════════════
+
+DISCOUNT_RATE_SCHEDULE = {1: 0.15, 2: 0.20, 3: 0.30}
+_MAX_SCHEDULED_YEAR = max(DISCOUNT_RATE_SCHEDULE)
 
 
-def post_offering_shares(capital: float, par_value: float = 500.0,
-                         dilution: float = 0.25) -> float:
-    """공모후 발행주식수 추정.
+def tiered_discount_rate(years_out: int) -> float:
+    """years_out(정수, 당해년도=0)에 해당하는 할인율.
+    스케줄 밖(4년 이상)은 가장 먼 연차 요율을 그대로 유지한다 — 더 먼 미래일수록
+    불확실성이 줄어들 이유가 없으므로 보수적으로 마지막 요율을 캡으로 쓴다."""
+    if years_out <= 0:
+        return 0.0
+    return DISCOUNT_RATE_SCHEDULE.get(years_out, DISCOUNT_RATE_SCHEDULE[_MAX_SCHEDULED_YEAR])
 
-    공모전 = 자본금 / 액면가.  공모후 = 공모전 / (1 − dilution).
-    dilution = 신주(공모주식)가 공모후 총주식에서 차지하는 비율(기본 25%).
-    dilution=0이면 공모전 주식수 그대로(희석 무시).
+
+def present_value_tiered(future_value: float, years_out: int) -> float:
+    """미래값을 연차별 요율로 단순 거듭제곱 할인 (present_value()의 다년도 스케줄 버전).
+    당해년도(years_out<=0)는 할인 없이 그대로 반환."""
+    if years_out <= 0:
+        return future_value
+    rate = tiered_discount_rate(years_out)
+    return future_value / ((1.0 + rate) ** years_out)
+
+
+def value_band_from_projections(projections: dict, representative_multiple: float,
+                                base_year: int) -> dict:
+    """연도별 추정치(매출 또는 순이익) × 대표 배수(PER 또는 PSR) → 연도별 현재가치 밴드.
+
+    Args:
+        projections: {연도(int): 추정치(억원)} — 예: {2027: 32.5, 2028: 54.0}.
+                     "추정 재무제표 입력" 화면이나 core/ir_parser.py에서 온 값.
+        representative_multiple: 대표 PER(순이익 기준) 또는 PSR(매출 기준).
+        base_year: 오늘 기준 연도 — 할인연수(years_out = 연도 - base_year) 계산 기준.
+
+    Returns:
+        {연도: {"years_out", "raw_value_억원"(할인 전 평가액),
+                "discount_rate", "present_value_억원"(할인 후, 오늘 기준 가치)}}
+        연도 오름차순 정렬은 호출측 책임(dict는 삽입 순서 유지되므로 정렬해서 넣으면 됨).
     """
-    pre = capital / par_value
-    return pre / (1.0 - dilution) if dilution < 1.0 else pre
-
-
-def offering_price_band(per_share: float, discount_mid_pct: float,
-                        halfwidth_pct: float = 5.0, round_to: int = 100) -> dict:
-    """주당 평가가액 + 할인율(점추정) → 희망 공모가액 밴드(신고서 형식).
-
-    신고서 관행: 할인율 낮음(상단가) ~ 할인율 높음(하단가).
-      공모가 상단 = 주당평가 × (1 − 낮은할인율)
-      공모가 하단 = 주당평가 × (1 − 높은할인율)
-    discount_mid를 중심으로 ±halfwidth 밴드. round_to원 단위 반올림.
-    """
-    d_low = max(discount_mid_pct - halfwidth_pct, 0.0)   # 낮은 할인 → 높은 가격
-    d_high = discount_mid_pct + halfwidth_pct            # 높은 할인 → 낮은 가격
-    price_high = per_share * (1.0 - d_low / 100.0)
-    price_low = per_share * (1.0 - d_high / 100.0)
-    if round_to:
-        price_high = round(price_high / round_to) * round_to
-        price_low = round(price_low / round_to) * round_to
-    return {
-        "discount_low": round(d_low, 2), "discount_high": round(d_high, 2),
-        "price_low": price_low, "price_high": price_high,
-        "price_mid": round((price_low + price_high) / 2),
-    }
+    band = {}
+    for year in sorted(projections.keys()):
+        proj_value = projections[year]
+        years_out = year - base_year
+        raw_value = proj_value * representative_multiple
+        rate = tiered_discount_rate(years_out)
+        pv = present_value_tiered(raw_value, years_out)
+        band[year] = {
+            "years_out": years_out,
+            "raw_value_억원": raw_value,
+            "discount_rate": rate,
+            "present_value_억원": pv,
+        }
+    return band
